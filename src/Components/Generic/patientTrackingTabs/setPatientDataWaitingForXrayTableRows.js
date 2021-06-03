@@ -23,7 +23,7 @@ export const setPatientDataWaitingForXrayTableRows = function (
     'reasonForReferral',
     'time',
     'status',
-    'messages',
+    /*'messages',*/
     'encounterSheet',
   ];
   const tableHeaders = getTableHeaders(tableHeadersId);

@@ -4,6 +4,8 @@ const StyledBG = styled.div`
   display: flex;
   min-width: 47%;
   position: relative;
+  height: 100vh;
+  background-image: url(${(props) => (props.url) });
 `;
 
 export default StyledBG;
@@ -14,7 +16,7 @@ export const CenteredText = styled.div`
   flex-direction: column;
   justify-content: center;
   top: 50%;
-  left: 50%;
+  left: 58%;
   transform: translate(-50%, -50%);
   color: #ffffff;
   & > .MuiTypography-h1 {

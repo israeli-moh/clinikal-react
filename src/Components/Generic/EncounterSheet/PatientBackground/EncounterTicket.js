@@ -36,7 +36,7 @@ const EncounterTicket = ({
       <StyledFadeElement in={showAlwaysState || hide} timeout={1000}>
         <StyledEncounterTicket hide={hide} showAlwaysState={showAlwaysState}>
           <StyledEncountersTicketsCurrent dir={languageDirection} key={key}>
-            <StyledCurrentExaminationHeader>
+            <StyledCurrentExaminationHeader dir={languageDirection}>
               <div>
                 {currentDate('YYYY-MM-DD') ===
                 formatShortDate(encounterToParse.startTime, 'YYYY-MM-DD')
@@ -79,7 +79,7 @@ const EncounterTicket = ({
             elevation={0}
             dir={languageDirection}
             key={key}>
-            <StyledCurrentExaminationHeader>
+            <StyledCurrentExaminationHeader dir={languageDirection}>
               <div>
                 {currentDate('YYYY-MM-DD') ===
                 formatShortDate(encounterToParse.startTime, 'YYYY-MM-DD')

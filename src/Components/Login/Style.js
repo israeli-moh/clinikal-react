@@ -33,6 +33,9 @@ export const LoginTitle = styled.div`
   justify-content: center;
   align-items: center;
   margin: 96px 0 122px 0;
+  @media (max-width: 1400px) {
+    margin: 96px 0 96px 0;
+  }
   & .MuiTypography-root {
     font-size: 28px;
     font-weight: bold;
@@ -47,11 +50,16 @@ export const LoginForm = styled.form`
   justify-content: flex-start;
   align-items: center;
   width: 100%;
-  padding: 0 286px;
+  padding-right:286px;
   & > .MuiTypography-root {
     font-size: 32px;
     color: #000b40;
   }
+  padding-left:150px;
+  @media (min-width: 1500px) {
+    padding-left:286px;
+  }
+  direction: ${(props) => (props.dir)};
 `;
 
 export const LoginLogo = styled.img`

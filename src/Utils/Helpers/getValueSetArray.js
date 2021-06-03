@@ -14,9 +14,9 @@ const convertArrayToObject = (array, key) => {
 export const getValueSetFromLists = async (value, turnToObj) => {
   let detailsObj = [];
 
-  if (value && value && value.status && value.status === 200) {
+  if (value) {
     let counter = 0;
-    value.data.expansion.contains.map((data) => {
+    value.expansion.contains.map((data) => {
       const dataNormalized = normalizeFhirValueSet(data);
 
       detailsObj.push({

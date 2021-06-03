@@ -7,6 +7,7 @@ import PatientBackground from './PatientBackground';
 import EncounterForms from './EncounterForms';
 import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirEncounter from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirEncounter';
+import {fhirFormatDateTime} from 'Utils/Helpers/Datetime/formatDate';
 
 const EncounterSheet = ({
   patient,
@@ -18,15 +19,20 @@ const EncounterSheet = ({
 }) => {
   const [prevEncounterId, setPrevEncounterId] = useState(null);
   const isSomethingWasChanged = React.useRef(() => false);
+
+  //force update when the encounter details are changed
+  const [, updateState] = React.useState();
+  const forceUpdate = React.useCallback(() => updateState({}), []);
+
   useEffect(() => {
     (async () => {
       try {
         const FHIRPrevEncounter = await FHIR('Encounter', 'doWork', {
           functionName: 'getNextPrevEncounterPerPatient',
           functionParams: {
-            statusUpdateDate: moment(
+            statusUpdateDate:fhirFormatDateTime(
               encounter.extensionStatusUpdateDate,
-            ).format('YYYY-MM-DD'),
+            ),
             patient: patient.id,
             prev: true,
           },
@@ -70,6 +76,7 @@ const EncounterSheet = ({
           languageDirection={languageDirection}
           verticalName={verticalName}
           isSomethingWasChanged={isSomethingWasChanged}
+          forceEncounterSheetUpdate={forceUpdate}
         />
       </StyledEncounterSheet>
     </React.Fragment>

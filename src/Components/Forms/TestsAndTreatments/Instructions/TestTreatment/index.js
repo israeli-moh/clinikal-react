@@ -19,6 +19,8 @@ import {
   getValueSetLists,
 } from 'Utils/Helpers/getValueSetArray';
 import { StyledHiddenDiv } from 'Components/Forms/TestsAndTreatments/Style';
+import { store } from 'index';
+import { SET_VALUESET } from 'Store/Actions/ListsBoxActions/ListsboxActionTypes';
 
 /**
  *
@@ -40,14 +42,25 @@ const TestTreatment = ({ index, item, setRequiredErrors }) => {
   ] = useState();
   useEffect(() => {
     (async () => {
-      const testAndTreatmentsValuesetFromFhir = await FHIR(
-        'ValueSet',
-        'doWork',
-        {
-          functionName: 'getValueSet',
-          functionParams: { id: 'tests_and_treatments' },
-        },
-      );
+        let testAndTreatmentsValuesetFromFhir;
+        //fetch from redux if exists
+        if (store.getState().listsBox.hasOwnProperty('tests_and_treatments')) {
+            testAndTreatmentsValuesetFromFhir = store.getState().listsBox['tests_and_treatments'];
+        } else {
+            //load and set into redux
+            const result = await FHIR('ValueSet', 'doWork', {
+                functionName: 'getValueSet',
+                functionParams: {
+                    id: 'tests_and_treatments',
+                },
+            })
+            let objValueset = {};
+            if (result.data) {
+                objValueset[result.data.id] = result.data;
+                store.dispatch({ type: SET_VALUESET, valueset: objValueset });
+            }
+            testAndTreatmentsValuesetFromFhir = result.data;
+        }
 
       const test_and_treatments_list = await getValueSetFromLists(
         testAndTreatmentsValuesetFromFhir,
@@ -56,7 +69,7 @@ const TestTreatment = ({ index, item, setRequiredErrors }) => {
       setCollectedTestAndTreatmentsFromFhirObject(test_and_treatments_list);
       const testAndTreatmentObj = [];
 
-      testAndTreatmentsValuesetFromFhir.data.expansion.contains.map(
+      testAndTreatmentsValuesetFromFhir.expansion.contains.map(
         (testAndTreatment) => {
           const normalizedTestAndTreatmentsFromFhirValueSet = normalizeFhirValueSet(
             testAndTreatment,

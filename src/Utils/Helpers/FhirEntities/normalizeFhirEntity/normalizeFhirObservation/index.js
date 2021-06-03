@@ -76,6 +76,10 @@ const normalizeFhirObservation = (observation, indicators, performers) => {
     observation.component.map((observed, indexQuantity) => {
       let mergeObjects = null;
       if (observed.valueQuantity && indicators[observed.valueQuantity.code]) {
+        //clean zeros from the end of the number
+        if (/\d+\.[0-9]+$/.test(observed.valueQuantity.value)) {
+          observed.valueQuantity.value = observed.valueQuantity.value.replace(/0+$/,'').replace(/\.$/,'');
+        }
         mergeObjects = {
           ...observed.valueQuantity,
           ...indicators[observed.valueQuantity.code],
@@ -91,6 +95,7 @@ const normalizeFhirObservation = (observation, indicators, performers) => {
           )[1]
         ]
       ) {
+        console.log(observed.valueCodeableConcept.text)
         mergeObjects = {
           ...{
             value: observed.valueCodeableConcept.text,
@@ -119,6 +124,7 @@ const normalizeFhirObservation = (observation, indicators, performers) => {
       returnedObservation.length++;
     });
   }
+
 
   return {
     id: id,

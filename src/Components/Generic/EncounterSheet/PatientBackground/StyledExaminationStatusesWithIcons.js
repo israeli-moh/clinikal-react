@@ -24,6 +24,7 @@ const StyledExaminationStatusesWithIcons = ({
   handleCreateData,
   currentUser,
   facility,
+  languageCode
 }) => {
   const { t } = useTranslation();
   const MedicalFileClick = (doc) => {
@@ -34,8 +35,8 @@ const StyledExaminationStatusesWithIcons = ({
     // handleCreateData(true);
     store.dispatch(setEncounterAndPatient(encounterData, patient));
   };
-  const [docID, setDoc] = React.useState(-1);
   const [existLetter, setExistLetter] = React.useState(false);
+  const [letterInPreogress, setLetterInPreogress] = React.useState(false);
 
   useEffect(() => {
     if (
@@ -46,15 +47,21 @@ const StyledExaminationStatusesWithIcons = ({
     }
   }, []);
 
-  const createLetter = async () => {
-    let docId = await createSummaryLetter({
-      encounter: encounterData,
-      patientId: patient.id,
-      currentUser,
-      facility,
-      docID: existLetter,
-    });
-    setDoc(docId);
+  const createLetter = async (existLetterId) => {
+    if ((encounterData.status === 'finished' && existLetterId) ||
+    encounterData.extensionSecondaryStatus === 'waiting_for_release')
+    {
+      setLetterInPreogress(true)
+      let docId = await createSummaryLetter({
+        encounter: encounterData,
+        patientId: patient.id,
+        currentUser,
+        facility,
+        docID: existLetterId,
+      });
+      setExistLetter(docId);
+      setLetterInPreogress(false)
+    }
   };
 
   const existSummeryLetter = async () => {
@@ -62,6 +69,7 @@ const StyledExaminationStatusesWithIcons = ({
       functionName: 'getDocumentReference',
       searchParams: { category: 5, encounter: encounterData.id },
     });
+    console.log(documentReferenceData)
     return documentReferenceData &&
       documentReferenceData.data &&
       documentReferenceData.data.total >= 1
@@ -74,7 +82,7 @@ const StyledExaminationStatusesWithIcons = ({
       <StyledIconContainer>
         <StyledCameraIcon
           canClickEncounter={encounterSheet ? false : true}
-          onClick={!encounterSheet ? CameraClick : null}>
+          onClick={!encounterSheet ? CameraClick : null} lang={languageCode}>
           <img alt={'Camera'} src={Camera} />
           <span>{t('Encounter sheet')}</span>
         </StyledCameraIcon>
@@ -83,10 +91,14 @@ const StyledExaminationStatusesWithIcons = ({
             <input value={encounterData.status} />*/}
           <StyledListItem>
             <StyledMedicalFileIcon
-              onClick={createLetter}
+              lang={languageCode}
+              onClick={() => {
+                createLetter(existLetter)
+              }}
               canClickMedical={
-                (encounterData.status === 'finished' && existLetter) ||
-                encounterData.extensionSecondaryStatus === 'waiting_for_release'
+                (encounterData.status === 'finished' && existLetter && !letterInPreogress) ||
+                (encounterData.extensionSecondaryStatus === 'waiting_for_release' && !letterInPreogress)
+
               }>
               <img alt={'MedicalFile'} src={MedicalFile} />
               <span>{t('Summary letter')}</span>
@@ -102,6 +114,7 @@ const mapStateToProps = (state) => {
     patient: state.active.activePatient,
     encounter: state.active.activeEncounter,
     languageDirection: state.settings.lang_dir,
+    languageCode: state.settings.lang_code,
     formatDate: state.settings.format_date,
     verticalName: state.settings.clinikal_vertical,
     currentUser: state.active.activeUser,

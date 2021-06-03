@@ -36,6 +36,8 @@ const FilterBox = ({
   setFilterOrganizationAction,
   setFilterServiceTypeAction,
   selectFilterIsSet,
+  serviceTypes,
+  clinicsList
 }) => {
   const { t } = useTranslation();
 
@@ -52,10 +54,8 @@ const FilterBox = ({
         //Nested destructuring from Promise. ES6 new syntax.
         //const {data: {entry: dataOrganization}} = await getOrganization();
         const {
-          data: { entry: dataOrganization },
-        } = await FHIR('Organization', 'doWork', {
-          functionName: 'getOrganization',
-        });
+          entry: dataOrganization
+        } = clinicsList;
 
         for (let entry of dataOrganization) {
           if (entry.resource !== undefined) {
@@ -74,10 +74,8 @@ const FilterBox = ({
     (async () => {
       try {
         const {
-          data: {
             expansion: { contains },
-          },
-        } = await getValueSet('service_types');
+        } = serviceTypes;
         let options = emptyArrayAll(t('All'));
         for (let status of contains) {
           options.push(normalizeFhirValueSet(status));
@@ -185,6 +183,8 @@ const mapStateToProps = (state) => {
     selectFilterServiceType: state.filters.filter_service_type,
     selectFilterIsSet: state.filters.filter_is_set,
     tabValue: state.filters.statusFilterBoxValue,
+    serviceTypes: state.listsBox.service_types,
+    clinicsList: state.listsBox.clinicsList
   };
 };
 

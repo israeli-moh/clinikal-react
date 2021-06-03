@@ -29,7 +29,7 @@ export const StyledVariantTextField = styled(TextField)`
   border-radius: 10px;
   background-color: #f8faff;
   label + .MuiInput-formControl {
-    margin: 15px 6px;
+    margin: 23px 6px;
     width: 104px;
   }
   .MuiInputLabel-shrink {
@@ -114,11 +114,16 @@ export const StyledConstantForm = styled.div`
 export const StyledTestsAndTreatments = styled.div``;
 export const StyledTable = styled(Table)`
   .MuiInputLabel-formControl {
-    left: 19px;
+    left: ${(props) => (props.language_direction === 'ltr' ? '-21px' : '-71px')};
+    text-align: ${(props) => (props.language_direction === 'ltr' ? 'left' : 'right')};
+    width: 160px;
   }
   display: flex;
   .MuiTableCell-root {
     padding: 2px;
+  }
+  .MuiInputLabel-shrink {
+    transform-origin: ${(props) => (props.language_direction === 'ltr' ? 'left' : 'right')};
   }
 `;
 
@@ -148,7 +153,7 @@ export const StyledTreatmentInstructionsButton = styled(Button)`
 `;
 
 export const StyledCardRoot = styled.div`  
-  padding: 27px;
+  padding: 14px;
 `;
 export const StyledCardInstruction = styled(Card)`
   display: flex;
@@ -215,7 +220,6 @@ export const StyledIconedButton = styled(Button)`
   border-radius: 0px 23.5px 23.5px 0px;
   background-color: #eaf7ff;
   top: 34%;
-  right: 32%;
 
   p {
     width: auto;
@@ -228,6 +232,7 @@ export const StyledIconedButton = styled(Button)`
     letter-spacing: normal;
     text-align: right;
     color: #000b40;
+    white-space: nowrap;
   }
 
   div {
@@ -276,9 +281,4 @@ export const StyledHeader = styled.p`
 `;
 
 export const StyledTypographyList = styled(Typography)``;
-export const StyledPopper = styled(Popper)`
-  ul {
-    direction: ${(props) =>
-      props.direction ? `${props.direction} !important` : 'ltr'};
-  }
-`;
+

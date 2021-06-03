@@ -58,7 +58,7 @@ const Content = ({ statuses, currentStatus }) => {
                   style={{ paddingRight: statusIndex === 0 && '0' }}
                   color='primary'
                   disabled={
-                    permission === 'view' || currentStatus === status.value
+                    permission === 'view'
                       ? true
                       : false
                   }

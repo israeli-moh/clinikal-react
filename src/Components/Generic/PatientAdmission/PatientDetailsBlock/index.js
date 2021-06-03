@@ -26,6 +26,7 @@ import { store } from 'index';
 import Loader from 'Assets/Elements/Loader';
 import { showSnackbar } from 'Store/Actions/UiActions/ToastActions';
 import isAllowed from "../../../../Utils/Helpers/isAllowed";
+import { answerType } from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
 // import { DevTool } from 'react-hook-form-devtools';
 
 const PatientDetailsBlock = ({
@@ -35,6 +36,7 @@ const PatientDetailsBlock = ({
   formatDate,
   setIsDirty,
   configuration,
+  isSomethingWasChanged
 }) => {
   const { t } = useTranslation();
   let history = useHistory();
@@ -42,14 +44,101 @@ const PatientDetailsBlock = ({
     mode: 'onBlur',
     submitFocusError: true,
   });
-  const { handleSubmit, formState, setValue } = methods;
+  const { handleSubmit, formState, setValue, getValues } = methods;
+
+  const [initValueObj, setInitValueObj] = useState({});
+  /*
+  * Save all the init value in the state than call to setValue
+  * */
+  const initValue = (arrayValues) => {
+    setInitValueObj((prev) => {
+      const initValues = { ...prev };
+      arrayValues.forEach((val) => {
+        for (const index in val) {
+          if (!initValues.hasOwnProperty(index)) {
+            initValues[index] = val[index];
+          }
+        }
+      });
+      return initValues;
+    });
+    setValue(arrayValues);
+  };
+
+  /*
+  * compare initValueObj with currentValues and find changes
+  * */
+  const isFormDirty = () => {
+    if (!writePermission()) return false;
+    const currentValues = getValues({ nest: true });
+   // console.log(currentValues)
+  //  console.log(initValueObj)
+
+    const emptyInFirst = [
+        'Referral',
+        'additionalDocumentFile_64',
+        'addressPostalCode',
+        'escortMobilePhone',
+        'escortName',
+        'examinationCode',
+        'isEscorted',
+        'paymentAmount',
+        'paymentMethod',
+        'receiptNumber',
+        'reasonForReferralDetails'
+    ];
+    for (const elem of emptyInFirst) {
+      if (
+          typeof currentValues[elem] !== 'undefined' &&
+          currentValues[elem] !== null &&
+          ( currentValues[elem].length > 0 || currentValues[elem] === true || ( typeof currentValues[elem] === 'object' && currentValues[elem] !== {} )   ) &&
+          typeof initValueObj[elem] === 'undefined'
+      ) {
+      //  console.log(`missing - ${elem}`);
+        return true;
+      }
+    }
+
+    for (const index in initValueObj) {
+      if (
+          (typeof initValueObj[index] === "undefined" && (typeof currentValues[index] !== "undefined" && currentValues[index].length > 0))
+          || (typeof initValueObj[index] !== "undefined" && JSON.stringify(initValueObj[index]) !== JSON.stringify(currentValues[index]))
+      ) {
+       // console.log(`changed - ${index}`);
+        return true;
+      }
+    }
+    return false;
+  };
+
+    useEffect(() => {
+      initValue([
+        { reasonForReferralDetails: encounterData.extensionReasonCodeDetails },
+      ])
+    }, []);
+
+  /*
+ * </END FORM DIRTY FUNCTIONS>
+ * */
+
+
+
   // Giving the patientAdmission if the form is dirty
   // meaning that there has been changes in the form
   const { dirty } = formState;
 
   useEffect(() => {
-    setIsDirty(dirty);
+   // setIsDirty(dirty);
   }, [dirty, setIsDirty]);
+
+  useEffect(() => {
+    isSomethingWasChanged.current = isFormDirty;
+    return () => {
+      isSomethingWasChanged.current = () => false;
+
+    };
+  }, [initValueObj]);
+
 
   /*
    * setLoading - hide/show loader
@@ -101,6 +190,7 @@ const PatientDetailsBlock = ({
     arrivalWay: '',
   });
   const onSubmit = async (data) => {
+
     if(writePermission()) {
       try {
         const clear = isRequiredValidation(data);
@@ -158,94 +248,82 @@ const PatientDetailsBlock = ({
               }),
             );
           }
-          let item = [];
-          if (configuration.clinikal_pa_commitment_form === '1') {
-            item = [
-              {
-                linkId: '1',
-                text: 'Commitment number',
-                answer: [
-                  {
-                    valueInteger:
-                    data.commitmentAndPaymentReferenceForPaymentCommitment,
-                  },
-                ],
-              },
-              {
-                linkId: '2',
-                text: 'Commitment date',
-                answer: [
-                  {
-                    valueDate: data.commitmentAndPaymentCommitmentDate,
-                  },
-                ],
-              },
-              {
-                linkId: '3',
-                text: 'Commitment expiration date',
-                answer: [
-                  {
-                    valueDate: data.commitmentAndPaymentCommitmentValidity,
-                  },
-                ],
-              },
-              {
-                linkId: '4',
-                text: 'Signing doctor',
-                answer: [
-                  {
-                    valueString: data.commitmentAndPaymentDoctorsName,
-                  },
-                ],
-              },
-              {
-                linkId: '5',
-                text: 'doctor license number',
-                answer: [
-                  {
-                    valueInteger: data.commitmentAndPaymentDoctorsLicense,
-                  },
-                ],
-              },
-            ];
-          } else {
-            item = [
-              {
-                linkId: '6',
-                text: 'Payment amount',
-                answer: [
-                  {
-                    valueString: data.paymentAmount,
-                  },
-                ],
-              },
-              {
-                linkId: '7',
-                text: 'Payment method',
-                answer: [
-                  {
-                    valueString: data.paymentMethod,
-                  },
-                ],
-              },
-              {
-                linkId: '8',
-                text: 'Receipt number',
-                answer: [
-                  {
-                    valueString: data.receiptNumber,
-                  },
-                ],
-              },
-            ];
-          }
+
+          const items = data.questionnaire.item.map((i) => {
+            const item = {
+              linkId: i.linkId,
+              text: i.text,
+            };
+            switch (i.linkId) {
+              case '1':
+                 (data.commitmentAndPaymentReferenceForPaymentCommitment && data.paymentTab === 'HMO') ?
+                  item['answer'] = answerType(i.type, data.commitmentAndPaymentReferenceForPaymentCommitment) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '2':
+                 (data.commitmentAndPaymentCommitmentDate && data.paymentTab === 'HMO') ?
+                  item['answer'] = answerType(i.type, data.commitmentAndPaymentCommitmentDate) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '3':
+                 (data.commitmentAndPaymentCommitmentValidity && data.paymentTab === 'HMO') ?
+                  item['answer'] = answerType(i.type, data.commitmentAndPaymentCommitmentValidity) :
+                   item['answer'] = answerType(i.type, null);
+                break;
+              case '4':
+                 (data.commitmentAndPaymentDoctorsName && data.paymentTab === 'HMO') ?
+                  item['answer'] = answerType(
+                      i.type,
+                      data.commitmentAndPaymentDoctorsName,
+                  ) :
+                   item['answer'] = answerType(i.type, null);
+                break;
+              case '5':
+                (data.commitmentAndPaymentDoctorsLicense && data.paymentTab === 'HMO') ?
+                  item['answer'] = answerType(i.type, data.commitmentAndPaymentDoctorsLicense) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '6':
+                 (data.paymentAmount && data.paymentTab === 'Private') ?
+                  item['answer'] = answerType(i.type, data.paymentAmount) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '7':
+                 (data.paymentMethod && data.paymentTab === 'Private') ?
+                  item['answer'] = answerType(i.type, data.paymentMethod) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '8':
+                 (data.receiptNumber && data.paymentTab === 'Private') ?
+                  item['answer'] = answerType(i.type, data.receiptNumber):
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '9':
+                 (data.exemptionReason && data.paymentTab === 'noPayment') ?
+                  item['answer'] = answerType(i.type, data.exemptionReason) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+              case '10':
+                 (data.noPaymentComment && data.paymentTab === 'noPayment') ?
+                  item['answer'] = answerType(i.type, data.noPaymentComment) :
+                  item['answer'] = answerType(i.type, null);
+                break;
+
+              default:
+                break;
+            }
+            return item;
+          });
+
           if (data.questionnaireResponse) {
             APIsArray.push(
               FHIR('QuestionnaireResponse', 'doWork', {
                 functionName: 'patchQuestionnaireResponse',
                 questionnaireResponseId: data.questionnaireResponse,
                 questionnaireResponseParams: {
-                  item,
+                  item: items,
+                  author: store.getState().login.userID,
+                  authored: fhirFormatDateTime(),
                 },
               }),
             );
@@ -262,7 +340,7 @@ const PatientDetailsBlock = ({
                     author: store.getState().login.userID,
                     authored: fhirFormatDateTime(),
                     source: patientData.id,
-                    item,
+                    item: items,
                   },
                 },
               }),
@@ -493,13 +571,14 @@ const PatientDetailsBlock = ({
           requiredErrors={requiredErrors}
           permission={writePermission() ? 'write' : 'view'}
           isCommitmentForm={configuration.clinikal_pa_commitment_form}>
-          <StyledForm onSubmit={handleSubmit(onSubmit)}>
+          <StyledForm >
             <EscortPatient
               writePermission={writePermission()}
               relatedPersonId={encounterData.relatedPerson}
               isArrivalWay={configuration.clinikal_pa_arrival_way}
               encounterArrivalWay={encounterData.extensionArrivalWay}
               handleLoading={handleLoading}
+              initValueFunction={initValue}
             />
             <ContactInformation
               writePermission={writePermission()}
@@ -509,6 +588,7 @@ const PatientDetailsBlock = ({
               streetName={patientData.streetName}
               streetNumber={patientData.streetNumber}
               addressType={patientData.addressType}
+              initValueFunction={initValue}
             />
             <VisitDetails
               reasonCodeDetails={encounterData.extensionReasonCodeDetails}
@@ -518,8 +598,7 @@ const PatientDetailsBlock = ({
               serviceTypeCode={encounterData.serviceTypeCode}
               priority={encounterData.priority}
               disableHeaders={false}
-              disableButtonIsUrgent={false}
-              initValueFunction={setValue}
+              initValueFunction={initValue}
             />
             <Payment
               writePermission={writePermission()}
@@ -528,20 +607,23 @@ const PatientDetailsBlock = ({
               formatDate={formatDate}
               managingOrganization={patientData.managingOrganization}
               handleLoading={handleLoading}
+              initValueFunction={initValue}
             />
             <Documents
               writePermission={writePermission()}
               eid={encounterData.id}
               pid={patientData.id}
               handleLoading={handleLoading}
+              initValueFunction={initValue}
             />
             <StyledFormGroup>
               <Grid container direction='row' justify='flex-end'>
                 <Grid item lg={3} sm={4}>
                   <StyledButton
+                    onClick={handleSubmit(onSubmit)}
                     color='primary'
                     variant='contained'
-                    type='submit'
+                    type='button'
                     disabled={loading}
                     letterSpacing={'0.1'}>
                     {t(writePermission() ? 'Save & Close' : 'Close')}

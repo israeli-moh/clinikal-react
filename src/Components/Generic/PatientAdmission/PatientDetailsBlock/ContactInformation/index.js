@@ -15,7 +15,8 @@ const ContactInformation = ({
   city,
   streetName,
   addressType,
-  writePermission
+  writePermission,
+  initValueFunction
 }) => {
   const { t } = useTranslation();
   const {
@@ -29,13 +30,24 @@ const ContactInformation = ({
 
   useEffect(() => {
     register({ name: 'addressCity' });
-    setValue('addressCity', addressCity.code);
+    initValueFunction([{'addressCity': addressCity.code}]);
     register({ name: 'addressStreet' });
-    setValue('addressStreet', addressStreet.code);
+    initValueFunction([{'addressStreet': addressStreet.code}]);
     register({ name: 'POBoxCity' });
-    setValue('POBoxCity', POBoxCity.code);
+    initValueFunction([{'POBoxCity': POBoxCity.code}]);
     register({ name: 'contactInformationTabValue' });
-    setValue('contactInformationTabValue', 0);
+    initValueFunction([{'contactInformationTabValue': 0}]);
+    register({ name: 'addressStreetNumber' });
+    initValueFunction([{'addressStreetNumber': streetNumber}]);
+    register({ name: 'POBox' });
+    initValueFunction([{'POBox': POBox}]);
+    register({ name: 'POBox' });
+    initValueFunction([{'POBox': patientPOBox}]);
+    register({ name: 'POBoxPostalCode' });
+    initValueFunction([{'POBoxPostalCode': postalCode}]);
+    register({ name: 'addressPostalCode' });
+    initValueFunction([{'addressPostalCode': postalCode}]);
+
 
     return () => {
       unregister([
@@ -190,7 +202,6 @@ const ContactInformation = ({
           <React.Fragment>
             {/* Contact Information - address - city */}
             <StyledAutoComplete
-              id='addressCity'
               open={citiesOpen}
               onOpen={() => {
                 setCitiesOpen(true);
@@ -249,7 +260,6 @@ const ContactInformation = ({
               open={streetsOpen}
               onOpen={() => addressCity.name && setStreetsOpen(true)}
               onClose={() => setStreetsOpen(false)}
-              id='addressStreet'
               value={addressStreet}
               disabled={!writePermission}
               getOptionSelected={(option, value) => option.code === value.code}
@@ -302,6 +312,9 @@ const ContactInformation = ({
                   width={'70%'}
                   id={'addressStreetNumber'}
                   label={t('House number')}
+                  InputProps={{
+                    autoComplete: 'no',
+                  }}
                 />
               }
               disabled={!writePermission}
@@ -322,6 +335,9 @@ const ContactInformation = ({
                   id={'addressPostalCode'}
                   label={t('Postal code')}
                   type='number'
+                  InputProps={{
+                    autoComplete: 'no',
+                  }}
                 />
               }
               disabled={!writePermission}
@@ -334,7 +350,6 @@ const ContactInformation = ({
           <React.Fragment>
             {/* Contact Information - POBox - city */}
             <StyledAutoComplete
-              id='POBoxCity'
               open={citiesOpen}
               onOpen={() => {
                 setCitiesOpen(true);
@@ -362,6 +377,7 @@ const ContactInformation = ({
                   {...params}
                   label={t('City')}
                   InputProps={{
+                    autoComplete: 'chrome-off',
                     ...params.InputProps,
                     endAdornment: (
                       <React.Fragment>
@@ -392,6 +408,9 @@ const ContactInformation = ({
                   width={'70%'}
                   id={'POBox'}
                   label={t('PO box')}
+                  InputProps={{
+                    autoComplete: 'no',
+                  }}
                 />
               }
             />
@@ -413,6 +432,9 @@ const ContactInformation = ({
                   label={t('Postal code')}
                   InputLabelProps={{
                     shrink: postalCode && true,
+                  }}
+                  InputProps={{
+                    autoComplete: 'no',
                   }}
                 />
               }

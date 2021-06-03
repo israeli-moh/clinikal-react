@@ -1,14 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyledSVG, StyleLoaderBox } from './style';
 import { useTranslation } from 'react-i18next';
+import { getToken } from 'Utils/Helpers/getToken';
+import { LOGIN_LANGUAGES } from 'Components/Login/loginLanguages';
 
 /*
  * Temporary component for login loader, until the translations do not return from server
  *
  * */
 const LoginLoader = () => {
-  return (
-    <StyleLoaderBox>
+
+  const [langDir, setLangDir] = useState(null);
+  const [langCode, setLangCode] = useState(null);
+  const [translation, setTranslation] = useState([]);
+
+  useEffect(() => {
+    const languageCode = getToken('langCode');
+    const languageDir = getToken('langDir');
+    setLangCode(languageCode.length > 0 ? languageCode : 'en');
+    setLangDir(languageDir.length > 0 ? languageDir : 'ltr');
+    setTranslation(LOGIN_LANGUAGES[languageCode]);
+
+  },[]);
+
+    return (
+    <>
+      { langCode && (
+          <StyleLoaderBox>
       <StyledSVG
         xmlns='http://www.w3.org/2000/svg'
         width='189'
@@ -45,8 +63,11 @@ const LoginLoader = () => {
           </g>
         </g>
       </StyledSVG>
-      <h3>אנא המתן...</h3>
+      <h3 dir={langDir} >{`${translation['please_wait']}...`}</h3>
     </StyleLoaderBox>
+        )
+      }
+    </>
   );
 };
 

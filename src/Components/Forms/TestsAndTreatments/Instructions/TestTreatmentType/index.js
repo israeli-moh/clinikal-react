@@ -12,10 +12,9 @@ import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirValueSet from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirValueSet';
 import { useTranslation } from 'react-i18next';
 import TestTreatmentLockedText from 'Components/Forms/TestsAndTreatments/Helpers/TestTreatmentLockedText';
-
+import { StyledPopper } from 'Assets/Elements/AutoComplete/Popper/Style';
 import {
   StyledHiddenDiv,
-  StyledPopper,
   StyledTypographyList,
 } from 'Components/Forms/TestsAndTreatments/Style';
 
@@ -23,10 +22,14 @@ import { KeyboardArrowDown } from '@material-ui/icons';
 import { StyledAutoComplete } from 'Assets/Elements/AutoComplete/StyledAutoComplete';
 import { VirtualizedListboxComponent } from 'Assets/Elements/AutoComplete/VirtualizedListbox';
 import { connect } from 'react-redux';
+import { store } from 'index';
+import { SET_VALUESET } from 'Store/Actions/ListsBoxActions/ListsboxActionTypes';
+import Tooltip from '@material-ui/core/Tooltip';
+import StyledTooltip from 'Assets/Elements/StyledTooltip';
 
 /**
  *
- * @param item
+* @param item
  * @param index
  * @param requiredErrors
  * @returns UI Field of the main form.
@@ -70,8 +73,31 @@ const TestTreatmentType = ({
     (async () => {
       if (!test_treatment) return;
       setCurrentTestTreatmentsInstructionsDetails([]);
-      let listsDetails = [];
-      listsDetails.push(
+
+      let listsDetails;
+      //fetch from redux if exist
+      if (store.getState().listsBox.hasOwnProperty(`details_${test_treatment}`)) {
+        listsDetails = store.getState().listsBox[`details_${test_treatment}`];
+      } else {
+        //load and save in redux, if not found list saved 'none' in the listbox(resux state)
+        const result = await FHIR('ValueSet', 'doWork', {
+          functionName: 'getValueSet',
+          functionParams: {
+            id: `details_${test_treatment}`,
+          },
+        })
+        let objValueset = {};
+        if (result.status === 200 && result.data) {
+          objValueset[result.data.id] = listsDetails = result.data;
+        } else {
+          objValueset[`details_${test_treatment}`] = listsDetails =  'none';
+        }
+        store.dispatch({ type: SET_VALUESET, valueset: objValueset });
+
+      }
+
+
+     /* listsDetails.push(
         FHIR('ValueSet', 'doWork', {
           functionName: 'getValueSet',
           functionParams: {
@@ -81,21 +107,18 @@ const TestTreatmentType = ({
       );
 
       const listsDetailsAfterAwait = await Promise.all(listsDetails);
-
+*/
       setCollectedTestAndTreatmentsTypeFromFhirObject(
-        listsDetailsAfterAwait[0].status === 200
-          ? listsDetailsAfterAwait[0].data.expansion.contains
+        listsDetails !== 'none'
+          ? listsDetails.expansion.contains
           : [],
       );
 
       let detailsObj = [];
       if (
-        listsDetailsAfterAwait &&
-        listsDetailsAfterAwait[0] &&
-        listsDetailsAfterAwait[0].status &&
-        listsDetailsAfterAwait[0].status === 200
+          listsDetails !== 'none'
       )
-        listsDetailsAfterAwait[0].data.expansion.contains.map((data) => {
+        listsDetails.expansion.contains.map((data) => {
           const dataNormalized = normalizeFhirValueSet(data);
           detailsObj.push({
             title: dataNormalized.name,
@@ -103,7 +126,7 @@ const TestTreatmentType = ({
           });
         });
       setCurrentTestTreatmentsInstructionsDetails(detailsObj);
-      setCurrentTitle(listsDetailsAfterAwait[0].data.title);
+      setCurrentTitle(listsDetails.title);
       setPopperWidth(
         test_treatment === 'x_ray'
           ? '125px'
@@ -182,26 +205,31 @@ const TestTreatmentType = ({
                   </StyledTypographyList>
                 )}
                 popupIcon={<KeyboardArrowDown />}
+                input_direction={test_treatment === 'providing_medicine' ? 'ltr' : language_direction}
                 renderInput={(params) => (
-                  <CustomizedTextField
-                    iconColor='#1976d2'
-                    fullWidth
-                    {...params}
-                    label={t(currentTitle)}
-                    error={
-                      requiredErrors[index] &&
-                      requiredErrors[index].test_treatment_type &&
-                      requiredErrors[index].test_treatment_type.length
-                        ? true
-                        : false
-                    }
-                    helperText={
-                      requiredErrors[index] &&
-                      requiredErrors[index].test_treatment_type
-                        ? requiredErrors[index].test_treatment_type
-                        : ''
-                    }
-                  />
+                  <StyledTooltip
+                    title={params.inputProps.value}
+                    aria-label={params.inputProps.value}>
+                    <CustomizedTextField
+                      iconColor='#1976d2'
+                      fullWidth
+                      {...params}
+                      label={t(currentTitle)}
+                      error={
+                        requiredErrors[index] &&
+                        requiredErrors[index].test_treatment_type &&
+                        requiredErrors[index].test_treatment_type.length
+                          ? true
+                          : false
+                      }
+                      helperText={
+                        requiredErrors[index] &&
+                        requiredErrors[index].test_treatment_type
+                          ? requiredErrors[index].test_treatment_type
+                          : ''
+                      }
+                    />
+                  </StyledTooltip>
                 )}
               />
             }

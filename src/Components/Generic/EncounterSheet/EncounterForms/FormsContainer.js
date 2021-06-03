@@ -10,6 +10,7 @@ import LazyLoadComponentsToArray from 'Utils/Helpers/lazyLoadComponentsToArray';
 import Loader from 'Assets/Elements/Loader';
 import { store } from 'index';
 import { showSnackbar } from "Store/Actions/UiActions/ToastActions.js";
+import { setEncounterAction } from 'Store/Actions/ActiveActions';
 
 function TabPanel(props) {
   const { children, value, index, dir, ...other } = props;
@@ -43,13 +44,12 @@ function allyProps(index) {
   };
 }
 /*[{"component":"MedicalAdmissionForm","form_name":"Medical Admission","order":"1","permission":"write"},{"component":"MedicalAdmissionForm","form_name":"Tests and Treatments","order":"2","permission":"write"},{"component":"MedicalAdmissionForm","form_name":"Diagnosis and Recommendations","order":"3","permission":"write"}]*/
-const FormsContainer = ({ tabs, dir, prevEncounterId, isSomethingWasChanged }) => {
+const FormsContainer = ({ tabs, dir, prevEncounterId, isSomethingWasChanged, forceEncounterSheetUpdate }) => {
   const { t } = useTranslation();
 
   const [value, setValue] = React.useState(0);
-  const [loading, setLoading] = useState(true);
+  const [tabDisabled, setTabDisabled] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
-
   let formComponents = [];
 
   // Instruction for how to work with validations this tab forms
@@ -73,6 +73,7 @@ const FormsContainer = ({ tabs, dir, prevEncounterId, isSomethingWasChanged }) =
 
   const validationFunctionToRun = React.useRef(() => true);
   const functionToRunOnTabChange = React.useRef(() => []);
+  const encounterFieldsWereUpdated = React.useRef({});
 
   const handleChange = async (event, newValue) => {
     if (validationFunctionToRun.current()) {
@@ -83,6 +84,11 @@ const FormsContainer = ({ tabs, dir, prevEncounterId, isSomethingWasChanged }) =
           store.dispatch(showSnackbar(t('The form has saved successfully'), 'check'));
         }
        // await shouldBeArray;
+      }
+      if (typeof encounterFieldsWereUpdated.current.examinationCode !== 'undefined') {
+        store.dispatch(setEncounterAction(encounterFieldsWereUpdated.current ));
+        encounterFieldsWereUpdated.current = {}
+        forceEncounterSheetUpdate();
       }
       setValue(newValue);
     }
@@ -126,7 +132,7 @@ const FormsContainer = ({ tabs, dir, prevEncounterId, isSomethingWasChanged }) =
                 validationFunction={validationFunctionToRun}
                 isSomethingWasChanged={isSomethingWasChanged}
                 permission={tab.permission}
-
+                encounterFieldsWereUpdated={encounterFieldsWereUpdated}
               />
             </Suspense>
           </TabPanel>

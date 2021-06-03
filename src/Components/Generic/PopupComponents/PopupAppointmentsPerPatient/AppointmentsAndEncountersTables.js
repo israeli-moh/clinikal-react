@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import TitleValueComponent from 'Assets/Elements/Header/Search/DrawThisTable/TitleValueComponent';
 import { useTranslation } from 'react-i18next';
 import { connect, useSelector } from 'react-redux';
@@ -34,6 +34,8 @@ import {
 import { store } from 'index';
 import { createSummaryLetter } from 'Utils/Helpers/Letters/createSummaryLetter';
 import {FHIR} from 'Utils/Services/FHIR';
+import {getNormalizeEncounterStatus} from 'Utils/Helpers/FhirEntities/helpers/getNormalizeEncounterStatus';
+
 
 const AppointmentsAndEncountersTables = ({
   patientId,
@@ -78,9 +80,7 @@ const AppointmentsAndEncountersTables = ({
     : null;
   const patientData = patientId;
   const curDate = currentDate(formatDate);
-  let normalizedCurEncounters = [];
-  let normalizedNextAppointments = [];
-  let normalizedPrevEncounters = [];
+
   // eslint-disable-next-line
   const getAppointmentWithTimeOrNot = (nextAppointmentEntry) => {
     let isThisAppToday =
@@ -96,6 +96,10 @@ const AppointmentsAndEncountersTables = ({
   const [showAllPastEncounter, setShowAllPastEncounter] = React.useState(false);
   let [pastEncounterCounter, setPastEncounterCounter] = React.useState(2);
   const [existLetter, setExistLetter] = React.useState({});
+  const [letterInPreogress, setLetterInPreogress] = React.useState({});
+  const [normalizedCurEncounters, setNormalizedCurEncounters] = React.useState([]);
+  const [normalizedPrevEncounters, setNormalizedPrevEncounters] = React.useState([]);
+  const [normalizedNextAppointments, setNormalizedNextAppointments] = React.useState([]);
 
   const [
     showAllFutureAppointments,
@@ -137,7 +141,7 @@ const AppointmentsAndEncountersTables = ({
       documentReferenceData.data.total >= 1)
       ? setExistLetter((prev) => {
         const cloneExist = { ...prev };
-        cloneExist[encounter.id] = true;
+        cloneExist[encounter.id] = documentReferenceData.data.entry[1].resource.id;
         return cloneExist;
       })
       : false;
@@ -155,73 +159,102 @@ const AppointmentsAndEncountersTables = ({
   const handleEncounterSheetClick = (encounter) => {
     goToEncounterSheet(encounter, patientData, history);
   };
-  if (curEncounters && curEncounters.data && curEncounters.data.total > 0) {
-    let entry = curEncounters.data.entry;
-    // eslint-disable-next-line
-    entry.map((response, resourceIndex) => {
-      if (
-        response &&
-        response.resource &&
-        response.resource.resourceType === 'Encounter'
-      ) {
-        let normalizedCurEncounterElem = normalizeFhirEncounter(
-          response.resource,
-        );
-        normalizedCurEncounters.push(normalizedCurEncounterElem);
-      }
-    });
-  }
 
-  if (
-    nextAppointments &&
-    nextAppointments.data &&
-    nextAppointments.data.total > 0
-  ) {
-    let entry = nextAppointments.data.entry;
-    // eslint-disable-next-line
-    entry.map((response, resourceIndex) => {
-      if (
-        response &&
-        response.resource &&
-        response.resource.resourceType === 'Appointment'
-      ) {
-        let normalizedNextAppointmentElem = normalizeFhirAppointment(
-          response.resource,
-        );
-        normalizedNextAppointments.push(normalizedNextAppointmentElem);
-      }
-    });
-  }
+  useEffect(() => {
 
-  if (prevEncounters && prevEncounters.data && prevEncounters.data.total > 0) {
-    let entry = prevEncounters.data.entry;
-    // eslint-disable-next-line
-    entry.map((response, resourceIndex) => {
-      if (
-        response &&
-        response.resource &&
-        response.resource.resourceType === 'Encounter'
-      ) {
-        let normalizedPrevEncounterElem = normalizeFhirEncounter(
-          response.resource,
-        );
-        if (normalizedPrevEncounterElem.status === 'finished') {
-          //check if exist summery letter, if not the button need to be disabled
-          existSummeryLetter(normalizedPrevEncounterElem);
+    if (curEncounters && curEncounters.data && curEncounters.data.total > 0) {
+      let entry = curEncounters.data.entry;
+      // eslint-disable-next-line
+      entry.map((response, resourceIndex) => {
+        if (
+            response &&
+            response.resource &&
+            response.resource.resourceType === 'Encounter'
+        ) {
+          let normalizedCurEncounterElem = normalizeFhirEncounter(
+              response.resource,
+          );
+          setNormalizedCurEncounters((prev) => {
+            const cloneNormalizedCurEncounters = prev;
+            cloneNormalizedCurEncounters.push(normalizedCurEncounterElem);
+            return cloneNormalizedCurEncounters;
+          })
         }
-        normalizedPrevEncounters.push(normalizedPrevEncounterElem);
-      }
-    });
-  }
+      });
+    }
+
+    if (
+        nextAppointments &&
+        nextAppointments.data &&
+        nextAppointments.data.total > 0
+    ) {
+      let entry = nextAppointments.data.entry;
+      // eslint-disable-next-line
+      entry.map((response, resourceIndex) => {
+        if (
+            response &&
+            response.resource &&
+            response.resource.resourceType === 'Appointment'
+        ) {
+          let normalizedNextAppointmentElem = normalizeFhirAppointment(
+              response.resource,
+          );
+          setNormalizedNextAppointments((prev) => {
+            const cloneormalizedNextAppointments = prev;
+            cloneormalizedNextAppointments.push(normalizedNextAppointmentElem);
+            return cloneormalizedNextAppointments;
+          })
+        }
+      });
+    }
+
+    if (prevEncounters && prevEncounters.data && prevEncounters.data.total > 0) {
+      let entry = prevEncounters.data.entry;
+      // eslint-disable-next-line
+      entry.map((response, resourceIndex) => {
+        if (
+            response &&
+            response.resource &&
+            response.resource.resourceType === 'Encounter'
+        ) {
+          let normalizedPrevEncounterElem = normalizeFhirEncounter(
+              response.resource,
+          );
+          if (normalizedPrevEncounterElem.status === 'finished') {
+            //check if exist summery letter, if not the button need to be disabled
+            existSummeryLetter(normalizedPrevEncounterElem);
+          }
+          setNormalizedPrevEncounters((prev) => {
+            const cloneNormalizedPrevEncounters = prev;
+            cloneNormalizedPrevEncounters.push(normalizedPrevEncounterElem);
+            return cloneNormalizedPrevEncounters;
+          })
+
+        }
+      });
+    }
+  },[curEncounters, prevEncounters, nextAppointments]);
 
   const createLetterFromData = async ({ encounter }) => {
+    setLetterInPreogress((prev) => {
+      const cloneLetterInPreogress = { ...prev };
+      cloneLetterInPreogress[encounter.id] = true;
+      return cloneLetterInPreogress;
+    })
+    let letterId  = existLetter[encounter.id] ? existLetter[encounter.id] : false;
     let docId = await createSummaryLetter({
       encounter,
       patientId,
       currentUser,
       facility,
+      letterId
     });
     setDoc(docId);
+    setLetterInPreogress((prev) => {
+      const cloneLetterInPreogress = { ...prev };
+      cloneLetterInPreogress[encounter.id] = false;
+      return cloneLetterInPreogress;
+    })
   };
   function handleCreateAppointment(patient) {
     return undefined;
@@ -280,7 +313,7 @@ const AppointmentsAndEncountersTables = ({
                           <TitleValueComponent
                             name={
                               encounterStatuses && encounter
-                                ? t(encounterStatuses[encounter.status])
+                                ? t(encounterStatuses[getNormalizeEncounterStatus(encounter)])
                                 : ''
                             }
                           />
@@ -544,7 +577,7 @@ const AppointmentsAndEncountersTables = ({
                             <TitleValueComponent
                               name={
                                 encounterStatuses && encounter
-                                  ? t(encounterStatuses[encounter.status])
+                                  ? t(encounterStatuses[getNormalizeEncounterStatus(encounter)])
                                   : ''
                               }
                             />
@@ -559,6 +592,9 @@ const AppointmentsAndEncountersTables = ({
                             size={'small'}
                             variant='outlined'
                             color='primary'
+                            onClick={(event) =>
+                                handleEncounterSheetClick(encounter)
+                            }
                             href='#contained-buttons'>
                             {t('Encounter sheet')}
                           </StyledHrefTableButton>
@@ -574,7 +610,7 @@ const AppointmentsAndEncountersTables = ({
                               />
                               <StyledHrefTableButton
                                 disabled={
-                                  !existLetter[encounter.id] || (
+                                  !existLetter[encounter.id] || letterInPreogress[encounter.id] || (
                                   authorizationACO.summaryLetter !== 'view' &&
                                   authorizationACO.summaryLetter !== 'write'
                                   )

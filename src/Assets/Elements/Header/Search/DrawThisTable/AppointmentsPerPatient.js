@@ -16,6 +16,7 @@ import ListItem from '@material-ui/core/ListItem';
 import { goToEncounterSheet } from 'Utils/Helpers/goTo/goToEncounterSheet';
 import { useHistory } from 'react-router-dom';
 import { currentDate, formatShortDate, formatTime }  from 'Utils/Helpers/Datetime/formatDate';
+import {getNormalizeEncounterStatus} from 'Utils/Helpers/FhirEntities/helpers/getNormalizeEncounterStatus';
 
 const AppointmentsPerPatient = ({
   nextAppointment,
@@ -47,6 +48,7 @@ const AppointmentsPerPatient = ({
   const normalizedPrevEncounter = prevEncounterEntry
     ? normalizeFhirEncounter(prevEncounterEntry)
     : null;
+  console.log(normalizedPrevEncounter)
   let normalizedCurEncounters = [];
   const getAppointmentWithTimeOrNot = (nextAppointmentEntry) => {
     let isThisAppToday =
@@ -108,7 +110,7 @@ const AppointmentsPerPatient = ({
                       <TitleValueComponent
                         name={
                           encounterStatuses && encounter
-                            ? t(encounterStatuses[encounter.status])
+                            ? t(encounterStatuses[getNormalizeEncounterStatus(encounter)])
                             : ''
                         } /*t(normalizedPrevEncounter.status.charAt(0).toUpperCase() + normalizedPrevEncounter.status.slice(1))}*/
                       />
@@ -194,7 +196,7 @@ const AppointmentsPerPatient = ({
                 <TitleValueComponent
                   name={
                     encounterStatuses && normalizedPrevEncounter
-                      ? t(encounterStatuses[normalizedPrevEncounter.status])
+                      ? t(encounterStatuses[getNormalizeEncounterStatus(normalizedPrevEncounter)])
                       : ''
                   }
                 />

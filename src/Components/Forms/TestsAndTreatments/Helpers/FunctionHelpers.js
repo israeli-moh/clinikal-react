@@ -51,16 +51,6 @@ export const handleVarientPaddTheZeroPlaceClickFunction = (
  * @returns {*}
  */
 function padTheZeroPlace(newValue) {
-  //pad Fever With Zeros
-  if (
-    parseFloat(newValue.replace(/_/g, '')) >= 0 &&
-    newValue.slice(-1) === '_' &&
-    parseFloat(newValue.slice(-3).replace(/_/g, '')) >= 0
-  ) {
-    newValue = newValue.replace('._', '.0');
-  } else {
-    newValue = newValue.replace('.0', '._');
-  }
   return newValue;
 }
 export function explodeMultipleIndicators(
@@ -150,6 +140,7 @@ export function mergeMultipleIndicators(
     }
   });
   if (keysPlaces.length > 0) {
+
     let variantIndicatorsNormalizedDataTemp = JSON.parse(
       JSON.stringify(variantIndicatorsNormalizedData),
     );
@@ -175,9 +166,12 @@ export function mergeMultipleIndicators(
           : ''
       }`;
     }
-    variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['mask'] = `${
+   /* variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['mask'] = `${
       variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['mask']
-    }${seperator}${variantIndicatorsNormalizedDataTemp[keysPlaces[1]]['mask']}`;
+    }${seperator}${variantIndicatorsNormalizedDataTemp[keysPlaces[1]]['mask']}`;*/
+    variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['placeholder'] = `${
+      variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['placeholder']
+    }${seperator}${variantIndicatorsNormalizedDataTemp[keysPlaces[1]]['placeholder']}`;
     variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['code'] = `${
       variantIndicatorsNormalizedDataTemp[keysPlaces[0]]['code']
     }${seperator}${variantIndicatorsNormalizedDataTemp[keysPlaces[1]]['code']}`;

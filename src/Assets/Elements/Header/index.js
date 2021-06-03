@@ -24,10 +24,10 @@ const Header = ({ Items, logoutAction, activeUser }) => {
   const userDetails = normalizeFhirUser(activeUser);
 
   const arrowDropDownItems = [
-    {
+    /*{
       Label: t('Change Password'),
       func: null,
-    },
+    },*/
     {
       Label: t('Disconnect'),
       func: logoutAction,
@@ -51,8 +51,8 @@ const Header = ({ Items, logoutAction, activeUser }) => {
       <HeaderIcon alt='Logo' img={Logo} />
       <HeaderTabs Items={Items} />
       <Search />
-      <HeaderIcon alt='notifications icon' img={notifications} />
-      <VerticalLine />
+      {/*<HeaderIcon alt='notifications icon' img={notifications} /> */}
+      {/*<VerticalLine />*/}
       <span>{userDetails.name[0]}</span>
       <IconWrapper onClick={handleArrowClick} open={arrowOpen}>
         {arrowOpen ? (

@@ -24,11 +24,16 @@ import SaveForm from '../GeneralComponents/SaveForm';
 import { store } from 'index';
 import { fhirFormatDateTime } from 'Utils/Helpers/Datetime/formatDate';
 import Loader from "../../../Assets/Elements/Loader";
-import {ParseQuestionnaireResponseBoolean} from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
+import {
+  answerType,
+  ParseQuestionnaireResponseBoolean
+} from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
 import {setEncounterAction} from 'Store/Actions/ActiveActions';
 import {showSnackbar} from 'Store/Actions/UiActions/ToastActions';
 import {baseRoutePath} from 'Utils/Helpers/baseRoutePath';
 import { useHistory } from 'react-router-dom';
+import { setValueset } from 'Store/Actions/ListsBoxActions/ListsBoxActions';
+import MedicalBackgroundComments from 'Components/Forms/MedicalAdmission/MedicalBackgroundComments';
 
 const MedicalAdmission = ({
   patient,
@@ -41,6 +46,9 @@ const MedicalAdmission = ({
   functionToRunOnTabChange,
   isSomethingWasChanged,
   prevEncounterId,
+  listsBox,
+  encounterFieldsWereUpdated,
+  formsSettings
 }) => {
   const { t } = useTranslation();
   const methods = useForm({
@@ -49,13 +57,35 @@ const MedicalAdmission = ({
   });
   const history = useHistory();
   const { handleSubmit, register, setValue, unregister, getValues, watch } = methods;
-
+  const saveProcess = React.useRef( false);
   /*
   * <FORM DIRTY FUNCTIONS>
   * */
   const [initValueObj, setInitValueObj] = useState({});
   const [loading, setLoading] = useState(true);
   const pregnancyLinkId = '4';
+  const [ListsLoaded, setListsLoaded] = useState(false);
+  const watchFields = watch(["examinationCode", "examination", "serviceTypeCode", "isUrgent", "reasonForReferralDetails"]);
+
+  //watch changes in the encounter - if the encounter details changed all the encounter sheet will rerender afoer the save process
+  useEffect(() =>{
+    if (typeof watchFields.examinationCode === 'undefined') return;
+    const encounterChanged =  (watchFields.examinationCode !== encounter.examinationCode||
+        watchFields.serviceTypeCode !== encounter.serviceTypeCode ||
+        (encounter.priority == 1 && watchFields.isUrgent) ||
+        (encounter.priority == 2 && !watchFields.isUrgent) ||
+        watchFields.reasonForReferralDetails !== encounter.extensionReasonCodeDetails);
+    if (encounterChanged) {
+      const cloneEncounter = {...encounter};
+      cloneEncounter['examinationCode'] = watchFields.examinationCode;
+      cloneEncounter['examination'] = watchFields.examination;
+      cloneEncounter['serviceTypeCode'] = watchFields.serviceTypeCode;
+      cloneEncounter['priority'] = watchFields.isUrgent ? 2 : 1;
+      cloneEncounter['extensionReasonCodeDetails'] = watchFields.reasonForReferralDetails;
+      encounterFieldsWereUpdated.current = cloneEncounter;
+    }
+
+  },[watchFields])
 
   /*
   * Save all the init value in the state than call to setValue
@@ -79,6 +109,7 @@ const MedicalAdmission = ({
   * compare initValueObj with currentValues and find changes
   * */
   const isFormDirty = () => {
+    if (permissionHandler() !== 'write' )return false;
     const currentValues = getValues({ nest: true });
     const emptyInFirst = [
       'sensitivities',
@@ -98,10 +129,10 @@ const MedicalAdmission = ({
 
     for (const index in initValueObj) {
       if (
-        (typeof initValueObj[index] === "undefined" && (typeof initValueObj[index] !== "undefined" && currentValues[index].length > 0))
+        (typeof initValueObj[index] === "undefined" && (typeof currentValues[index] !== "undefined" && currentValues[index].length > 0))
         || (typeof initValueObj[index] !== "undefined" && JSON.stringify(initValueObj[index]) !== JSON.stringify(currentValues[index]))
       ) {
-        console.log(`changed - ${index}`);
+      //  console.log(`changed - ${index}`);
         return true;
       }
     }
@@ -146,6 +177,23 @@ const MedicalAdmission = ({
     backgroundDiseases: false,
   });
   const [disabledOnSubmit, setdisabledOnSubmit] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const APILists = [];
+      const systemLists = ['drugs_list', 'bk_diseases', 'sensitivities']
+      systemLists.forEach((value => {
+            if ( !listsBox.hasOwnProperty(value)) {
+              APILists.push(
+                  store.dispatch(setValueset(value))
+              )
+            }
+          }
+      ));
+      await Promise.all(APILists);
+      setListsLoaded(true);
+    })();
+  }, []);
 
   useEffect(() => {
     for (const val in loadingStatus) {
@@ -417,24 +465,6 @@ const MedicalAdmission = ({
     return `${t(selected.reasonCode.name)}`;
   };
 
-  const answerType = (type, data) => {
-    if (type === 'string') {
-      return [
-        {
-          valueString: data,
-        },
-      ];
-    } else if (type === 'boolean') {
-      return [
-        {
-          valueBoolean: data,
-        },
-      ];
-    } else {
-      return `No such type: ${type}`;
-    }
-  };
-
   const savingProcess = () => {
     //   setLoading(true);
     //  setSaveLoading(() => {return true});
@@ -448,9 +478,13 @@ const MedicalAdmission = ({
   };
 
   const onSubmit = (data) => {
-    if (permissionHandler() === 'view') return false;
+    if (permissionHandler() === 'view' || saveProcess.current ) return false;
+    saveProcess.current = true;
     if (!data) data = getValues({ nest: true });
-    if (!isRequiredValidation(data)) return false;
+    if (!isRequiredValidation(data)) {
+      saveProcess.current  = false;
+      return false;
+    }
     // in the first form of the encounter need to save the form and connect the medical issue from prev encounter in current.
     // the questionnaireResponseId is undefined in the first
     const firstEncForm = typeof initValueObj['questionnaireResponseId'] === 'undefined'? true : false;
@@ -510,6 +544,9 @@ const MedicalAdmission = ({
                 data.medication === 'Exist' ? true : false,
               );
               break;
+            case '8':
+              item['answer'] = item['answer'] = answerType(i.type, data.medicalBackgroundComments);
+              break;
             default:
               break;
           }
@@ -522,6 +559,8 @@ const MedicalAdmission = ({
               questionnaireResponseId: data.questionnaireResponseId,
               questionnaireResponseParams: {
                 item: items,
+                author: store.getState().login.userID,
+                authored: fhirFormatDateTime()
               },
             }),
           );
@@ -591,13 +630,16 @@ const MedicalAdmission = ({
             }
           });
           // removed from list (by unchecked)
-          initValueObj.sensitivitiesCodes.forEach((sensitivities) => {
-            if (!data.sensitivitiesCodes.includes(sensitivities)) {
-              APIsArray.push(
-                conditionInactive(initValueObj.sensitiveConditionsIds[sensitivities].id)
-              );
-            }
-          });
+          if (typeof initValueObj.sensitivitiesCodes !== "undefined") {
+            initValueObj.sensitivitiesCodes.forEach((sensitivities) => {
+              if (!data.sensitivitiesCodes.includes(sensitivities)) {
+                APIsArray.push(
+                  conditionInactive(initValueObj.sensitiveConditionsIds[sensitivities].id)
+                );
+              }
+            });
+          }
+
         } else {
           if (
             data.sensitivitiesCodes &&
@@ -615,7 +657,6 @@ const MedicalAdmission = ({
             });
           }
         }
-
         //Creating new conditions for backgroundDiseases
         if (data.background_diseases === 'There are diseases') {
           data.backgroundDiseasesCodes.forEach((backgroundDisease) => {
@@ -643,13 +684,15 @@ const MedicalAdmission = ({
             }
           });
           // removed from list (by unchecked)
-          initValueObj.backgroundDiseasesCodes.forEach((sensitivities) => {
-            if (!data.backgroundDiseasesCodes.includes(sensitivities)) {
-              APIsArray.push(
-                conditionInactive(initValueObj.backgroundDiseasesIds[sensitivities].id)
-              );
-            }
-          });
+          if (typeof initValueObj.backgroundDiseasesCodes !== "undefined") {
+            initValueObj.backgroundDiseasesCodes.forEach((sensitivities) => {
+              if (!data.backgroundDiseasesCodes.includes(sensitivities)) {
+                APIsArray.push(
+                  conditionInactive(initValueObj.backgroundDiseasesIds[sensitivities].id)
+                );
+              }
+            });
+          }
         } else {
           if (
             data.backgroundDiseasesCodes &&
@@ -697,13 +740,15 @@ const MedicalAdmission = ({
             }
           });
           // removed from list (by unchecked)
-          initValueObj.chronicMedicationCodes.forEach((medication) => {
-            if (!data.chronicMedicationCodes.includes(medication)) {
-              APIsArray.push(
-                medicationInactive(initValueObj.chronicMedicationIds[medication].id)
-              );
-            }
-          });
+          if (typeof initValueObj.chronicMedicationCodes !== "undefined") {
+            initValueObj.chronicMedicationCodes.forEach((medication) => {
+              if (!data.chronicMedicationCodes.includes(medication)) {
+                APIsArray.push(
+                  medicationInactive(initValueObj.chronicMedicationIds[medication].id)
+                );
+              }
+            });
+          }
         } else {
           if (
             data.chronicMedicationCodes &&
@@ -729,16 +774,13 @@ const MedicalAdmission = ({
           }
         }
 
-        if (encounterChanged && cloneEncounter !== null) {
-          APIsArray.push(new Promise(store.dispatch(setEncounterAction(cloneEncounter))))
-        }
-        console.log(APIsArray);
         return APIsArray;
       } catch (error) {
         stopSavingProcess();
         console.log(error);
       }
     } else {
+      saveProcess.current  = false;
       return false;
     }
 
@@ -828,7 +870,6 @@ const MedicalAdmission = ({
             serviceTypeCode={encounter.serviceTypeCode}
             priority={encounter.priority}
             disableHeaders={false}
-            disableButtonIsUrgent={false}
             initValueFunction={initValue}
           />
           <UrgentAndInsulation
@@ -849,23 +890,34 @@ const MedicalAdmission = ({
               />
             </StyledRadioGroupChoice>
           )}
-          <Sensitivities
-            defaultRenderOptionFunction={medicalAdmissionRenderOption}
-            defaultChipLabelFunction={medicalAdmissionChipLabel}
-            handleLoading={handleLoading}
-            initValueFunction={initValue}
-          />
-          <BackgroundDiseases
-            defaultRenderOptionFunction={medicalAdmissionRenderOption}
-            defaultChipLabelFunction={medicalAdmissionChipLabel}
-            handleLoading={handleLoading}
-            initValueFunction={initValue}
-          />
-          <ChronicMedication
-            defaultChipLabelFunction={medicalAdmissionChipLabel}
-            handleLoading={handleLoading}
-            initValueFunction={initValue}
-          />
+          {ListsLoaded && (
+            <>
+            <Sensitivities
+              defaultRenderOptionFunction={medicalAdmissionRenderOption}
+              defaultChipLabelFunction={medicalAdmissionChipLabel}
+              handleLoading={handleLoading}
+              initValueFunction={initValue}
+            />
+            <BackgroundDiseases
+              defaultRenderOptionFunction={medicalAdmissionRenderOption}
+              defaultChipLabelFunction={medicalAdmissionChipLabel}
+              handleLoading={handleLoading}
+              initValueFunction={initValue}
+            />
+            <ChronicMedication
+              defaultChipLabelFunction={medicalAdmissionChipLabel}
+              handleLoading={handleLoading}
+              initValueFunction={initValue}
+            />
+              {formsSettings.clinikal_forms_medical_background_comments === '1' && (
+                <MedicalBackgroundComments
+                  initValueFunction={initValue}
+                  prevEncounterResponse={prevEncounterResponse}
+                  items={questionnaireResponseItems}
+                />
+              )}
+            </>
+          )}
           <SaveForm
             encounter={encounter}
             onSubmit={onSubmit}
@@ -888,6 +940,8 @@ const mapStateToProps = (state) => {
     languageDirection: state.settings.lang_dir,
     formatDate: state.settings.format_date,
     verticalName: state.settings.clinikal_vertical,
+    listsBox: state.listsBox,
+    formsSettings: state.settings.clinikal.forms,
   };
 };
-export default connect(mapStateToProps, null)(MedicalAdmission);
+export default connect(mapStateToProps, { setValueset })(MedicalAdmission);

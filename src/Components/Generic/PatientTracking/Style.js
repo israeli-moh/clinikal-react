@@ -40,6 +40,6 @@ export default styled.div`
 
 export const StyledTitle = styled.div`
   margin: 0px 32px 0px 32px;
-  width: 204px;
+  width: 304px;
   height: 38px;
 `;

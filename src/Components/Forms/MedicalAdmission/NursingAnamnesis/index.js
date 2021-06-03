@@ -3,7 +3,7 @@ import { StyledTemplateSelection } from '../Style';
 import { Grid } from '@material-ui/core';
 import { useFormContext } from 'react-hook-form';
 import CustomizedTextField from 'Assets/Elements/CustomizedTextField';
-import { StyledSelectTemplateButton } from 'Assets/Elements/StyledSelectTempleteButton';
+import  StyledSelectTemplateButton from 'Assets/Elements/StyledSelectTempleteButton';
 import { useTranslation } from 'react-i18next';
 
 const NursingAnamnesis = (initValueFunction) => {

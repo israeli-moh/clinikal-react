@@ -10,9 +10,21 @@ import normalizeFhirMedicationStatement from 'Utils/Helpers/FhirEntities/normali
 import MedicalIssue from 'Assets/Elements/MedicalIssue';
 import { useTranslation } from 'react-i18next';
 import normalizeFhirQuestionnaireResponse from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirQuestionnaireResponse';
-import {ParseQuestionnaireResponseBoolean} from "Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem";
+import {
+  ParseQuestionnaireResponseBoolean,
+  ParseQuestionnaireResponseText
+} from "Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem";
+import {
+  StyledContentBlock,
+  StyledDiv, StyledLastDiv,
+  StyledTitleTypography,
+  StyledTypography
+} from 'Assets/Elements/MedicalIssue/Style';
+import Divider from '@material-ui/core/Divider';
+import { connect } from 'react-redux';
+import { setValueset } from 'Store/Actions/ListsBoxActions/ListsBoxActions';
 
-const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading }) => {
+const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading, formsSettings}) => {
   const { t } = useTranslation();
 
   const [patientSensitivities, setPatientSensitivities] = useState([]);
@@ -22,18 +34,21 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
   const [patientChronicMedications, setPatientChronicMedications] = useState(
     [],
   );
+  const [medicalHistoryCommentContent, setMedicalHistoryCommentContent] = useState(null);
 
   const [medicalProblemIsUpdated, setMedicalProblemIsUpdated] = useState(0); //for online update
 
   const sensitivitiesLinkId = '5';
   const backgroundDiseasesLinkId = '6';
   const chronicMedicationLinkId = '7';
+  const medicalHistoryCommentId = '8';
 
   const extractItems = (normalizedQr) => {
     const isSensitive =  ParseQuestionnaireResponseBoolean(normalizedQr, sensitivitiesLinkId);
     const isBackgroundDiseases = ParseQuestionnaireResponseBoolean(normalizedQr, backgroundDiseasesLinkId);
     const isChronicMedication = ParseQuestionnaireResponseBoolean(normalizedQr, chronicMedicationLinkId);
-    return [isSensitive, isBackgroundDiseases, isChronicMedication];
+    const medicalHistoryComment = ParseQuestionnaireResponseText(normalizedQr, medicalHistoryCommentId);
+    return [isSensitive, isBackgroundDiseases, isChronicMedication, medicalHistoryComment];
   };
 
   useEffect(() => {
@@ -82,6 +97,7 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             sensitive,
             backgroundDiseases,
             chronicMedication,
+            medicalHistoryComment
           ] = extractItems(currQr);
           if (sensitive) {
             const sensitives = await FHIR('Condition', 'doWork', {
@@ -96,9 +112,11 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             const sensitivesArr = [];
             sensitives.data.entry.forEach((sens) => {
               if (sens.resource) {
-                sensitivesArr.push(
-                  normalizeFhirCondition(sens.resource)['codeText'],
-                );
+                if (!sensitivesArr.includes(normalizeFhirCondition(sens.resource)['codeText'])) {
+                  sensitivesArr.push(
+                    normalizeFhirCondition(sens.resource)['codeText'],
+                  );
+                }
               }
             });
             setPatientSensitivities(sensitivesArr);
@@ -120,9 +138,11 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             const backgroundArr = [];
             background.data.entry.forEach((back) => {
               if (back.resource) {
-                backgroundArr.push(
-                  normalizeFhirCondition(back.resource)['codeText'],
-                );
+                if (!backgroundArr.includes(normalizeFhirCondition(back.resource)['codeText'])) {
+                  backgroundArr.push(
+                    normalizeFhirCondition(back.resource)['codeText'],
+                  );
+                }
               }
             });
             setPatientBackgroundDiseases(backgroundArr);
@@ -144,11 +164,13 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             const chronicArr = [];
             chronic.data.entry.forEach((chro) => {
               if (chro.resource) {
-                chronicArr.push(
-                  normalizeFhirMedicationStatement(chro.resource)[
-                    'medicationCodeableConceptText'
-                  ],
-                );
+                if (!chronicArr.includes(normalizeFhirMedicationStatement(chro.resource)['medicationCodeableConceptText'])) {
+                  chronicArr.push(
+                    normalizeFhirMedicationStatement(chro.resource)[
+                      'medicationCodeableConceptText'
+                      ],
+                  );
+                }
               }
             });
             setPatientChronicMedications(chronicArr);
@@ -157,6 +179,8 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             setPatientChronicMedications(null);
             handleLoading('chronicMedications');
           }
+          setMedicalHistoryCommentContent(medicalHistoryComment ? medicalHistoryComment : null);
+
         } else if (prevEncounterId && responses[1] && responses[1].data.total) {
           // There is a prev encounter response
           const prevQr = normalizeFhirQuestionnaireResponse(
@@ -166,6 +190,7 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             sensitive,
             backgroundDiseases,
             chronicMedication,
+            medicalHistoryComment
           ] = extractItems(prevQr);
           if (sensitive) {
             const sensitives = await FHIR('Condition', 'doWork', {
@@ -235,6 +260,7 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
             setPatientChronicMedications(null);
             handleLoading('chronicMedications');
           }
+          setMedicalHistoryCommentContent(medicalHistoryComment ? medicalHistoryComment : null);
         } else {
           // There is no curr and no prev encounter response
           handleLoading('chronicMedications');
@@ -258,8 +284,31 @@ const MedicalIssues = ({ patientId, prevEncounterId, encounterId, handleLoading 
       <MedicalIssue
         items={patientChronicMedications}
         title={t('Chronic medications')}
+        langDirection={'ltr'}
       />
+      {formsSettings.clinikal_forms_medical_background_comments === '1' && (
+      <>
+        <StyledLastDiv>
+          <StyledTitleTypography variant='h6' gutterBottom>
+            {t('Comments')}
+          </StyledTitleTypography>
+          <Divider />
+          <StyledContentBlock>
+              <StyledTypography style={{whiteSpace: 'pre-line'}}>{medicalHistoryCommentContent}</StyledTypography>
+          </StyledContentBlock>
+        </StyledLastDiv>
+      </>
+      )}
     </React.Fragment>
   );
 };
-export default MedicalIssues;
+
+
+const mapStateToProps = (state) => {
+  return {
+    formsSettings: state.settings.clinikal.forms,
+  };
+};
+export default connect(mapStateToProps)(MedicalIssues);
+
+

@@ -33,7 +33,7 @@ const PatientAdmission = ({
   };
 
   const { t } = useTranslation();
-
+  const isSomethingWasChanged = React.useRef(() => false);
   const [edit, setEdit] = useState(0);
 
   const isTabletMode = useMediaQuery(
@@ -60,7 +60,8 @@ const PatientAdmission = ({
   ];
 
   const handleCloseClick = () => {
-    if (isDirty) {
+    let foundChanges = isSomethingWasChanged.current();
+    if (foundChanges) {
       setIsPopUpOpen(true);
     } else {
       deletingEncounter();
@@ -125,7 +126,7 @@ const PatientAdmission = ({
               patientData={patient}
               edit_mode={edit}
               formatDate={formatDate}
-              setIsDirty={setIsDirty}
+              isSomethingWasChanged={isSomethingWasChanged}
             />
           )}
       </StyledPatientRow>

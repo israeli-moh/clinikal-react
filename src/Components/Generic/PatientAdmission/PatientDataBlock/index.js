@@ -38,6 +38,7 @@ const PatientDataBlock = ({
   formatDate,
   setPatientDataAfterSave,
   priority,
+  mohList
 }) => {
   const { t } = useTranslation();
 
@@ -96,10 +97,8 @@ const PatientDataBlock = ({
       (async () => {
         try {
           const {
-            data: { entry: dataServiceType },
-          } = await FHIR('Organization', 'doWork', {
-            functionName: 'getOrganizationTypeKupatHolim',
-          });
+            entry: dataServiceType,
+          } = mohList
           for (let entry of dataServiceType) {
             if (entry.resource !== undefined) {
               entry.resource.name = t(entry.resource.name);
@@ -400,4 +399,9 @@ const PatientDataBlock = ({
   );
 };
 
-export default connect(null, { setPatientDataAfterSave })(PatientDataBlock);
+const mapStateToProps = (state) => {
+  return {
+    mohList: state.listsBox.hmoList
+  };
+};
+export default connect(mapStateToProps, { setPatientDataAfterSave })(PatientDataBlock);

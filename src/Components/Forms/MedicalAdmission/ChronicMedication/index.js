@@ -12,6 +12,7 @@ import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirMedicationStatement from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirMedicationStatement';
 import { multiMedicationsOptions } from 'Assets/Elements/CustomizedSelectCheckList/RenderTemplates/multiMedicationOptions';
 import {ParseQuestionnaireResponseBoolean} from "Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem";
+import { store } from 'index';
 
 const ChronicMedication = ({
   defaultRenderOptionFunction,
@@ -84,26 +85,28 @@ const ChronicMedication = ({
                 const normalizedMedicationStatement = normalizeFhirMedicationStatement(
                   medication.resource,
                 );
-                medicationCodes.push({
-                  reasonCode: {
-                    name:
+                if (!medicationInitIds.includes(normalizedMedicationStatement.medicationCodeableConceptCode)) {
+                  medicationCodes.push({
+                    reasonCode: {
+                      name:
                       normalizedMedicationStatement.medicationCodeableConceptText,
-                    code:
+                      code:
                       normalizedMedicationStatement.medicationCodeableConceptCode,
-                  },
-                  serviceType: {
-                    code: '',
-                    name: '',
-                  },
-                });
-                medicationIds[
-                  normalizedMedicationStatement.medicationCodeableConceptCode
-                ] = {
-                  id: normalizedMedicationStatement.id,
-                  code:
+                    },
+                    serviceType: {
+                      code: '',
+                      name: '',
+                    },
+                  });
+                  medicationIds[
+                    normalizedMedicationStatement.medicationCodeableConceptCode
+                    ] = {
+                    id: normalizedMedicationStatement.id,
+                    code:
                     normalizedMedicationStatement.medicationCodeableConceptCode,
-                };
-                medicationInitIds.push(normalizedMedicationStatement.medicationCodeableConceptCode)
+                  };
+                  medicationInitIds.push(normalizedMedicationStatement.medicationCodeableConceptCode)
+                }
               }
             });
             setSelectedList(medicationCodes);
@@ -141,13 +144,13 @@ const ChronicMedication = ({
 
     (async () => {
       try {
-        const sensitivitiesResponse = await getValueSet('drugs_list');
+        const sensitivitiesResponse = store.getState().listsBox.drugs_list;
         if (active) {
           // const myOptions = [{ code: '1', display: 'sadfadsasd' }];
           const options = [];
           const servicesTypeObj = {};
           const allReasonsCode = await Promise.all(
-            sensitivitiesResponse.data.expansion.contains.map((sensitive) => {
+              sensitivitiesResponse.expansion.contains.map((sensitive) => {
               const normalizedSensitiveSet = normalizeFhirValueSet(sensitive);
               const optionObj = {};
               optionObj['serviceType'] = {
@@ -192,6 +195,8 @@ const ChronicMedication = ({
           setServicesTypeOpen={setServicesTypeOpen}
           valueSetCode={'chronicMedicationCodes'}
           labelInputText={'Medications details'}
+          popperWidth={800}
+          popperLanguageDirection={'ltr'}
           // helperErrorText={
           //   'The visit reason performed during the visit must be selected'
           // }

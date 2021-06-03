@@ -11,5 +11,7 @@ export const StyledAutoComplete = styled(Autocomplete)`
   }
   .MuiAutocomplete-input {
     flex-grow: 0.8;
+    direction: ${(props) =>
+            props.input_direction ? `${props.input_direction}` : 'inherit'};
   }
 `;

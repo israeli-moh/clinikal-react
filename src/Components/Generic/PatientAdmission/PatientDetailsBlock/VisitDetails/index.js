@@ -29,6 +29,10 @@ import matchSorter from 'match-sorter';
 import normalizeFhirValueSet from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirValueSet';
 import { getValueSet } from 'Utils/Services/FhirAPI';
 import { connect } from 'react-redux';
+import { store } from 'index';
+import { setValueset } from 'Store/Actions/ListsBoxActions/ListsBoxActions';
+import { FHIR } from 'Utils/Services/FHIR';
+import { SET_VALUESET } from 'Store/Actions/ListsBoxActions/ListsboxActionTypes';
 
 const VisitDetails = ({
   reasonCodeDetails,
@@ -38,7 +42,8 @@ const VisitDetails = ({
   serviceTypeCode,
   priority,
   props,
-  initValueFunction
+  initValueFunction,
+  service_types
 }) => {
   const { t } = useTranslation();
   const {
@@ -63,11 +68,13 @@ const VisitDetails = ({
 
   const onCloseChangeHandler = (value) => {
     const examinationCodeArr = [];
+    const examinationArr = [];
     let serviceTypeCodeValue = '';
     if (value && value.length) {
       serviceTypeCodeValue = value[0].serviceType.code;
       value.forEach((item, itemIndex) => {
         examinationCodeArr.push(item.reasonCode.code);
+        examinationArr.push(item.reasonCode.name);
       });
     }
     setValue([
@@ -76,6 +83,9 @@ const VisitDetails = ({
       },
       {
         examinationCode: examinationCodeArr,
+      },
+      {
+        examination: examinationArr,
       },
     ]);
   };
@@ -117,17 +127,36 @@ const VisitDetails = ({
 
     (async () => {
       try {
-        const serviceTypeResponse = await getValueSet('service_types');
+        const serviceTypeResponse = service_types;
         if (active) {
           const options = [];
           const servicesTypeObj = {};
           const allReasonsCode = await Promise.all(
-            serviceTypeResponse.data.expansion.contains.map((serviceType) => {
+            serviceTypeResponse.expansion.contains.map((serviceType) => {
               const normalizedServiceType = normalizeFhirValueSet(serviceType);
               servicesTypeObj[normalizedServiceType.code] = {
                 ...normalizedServiceType,
               };
-              return getValueSet(`reason_codes_${normalizedServiceType.code}`);
+              //fetch from listBox state if exists
+              if (store.getState().listsBox.hasOwnProperty(`reason_codes_${normalizedServiceType.code}`)) {
+                return {data: store.getState().listsBox[`reason_codes_${normalizedServiceType.code}`]};
+              } else {
+                //load from server and save in the listBox state
+                const result = FHIR('ValueSet', 'doWork', {
+                  functionName: 'getValueSet',
+                  functionParams: {
+                    id: `reason_codes_${normalizedServiceType.code}`,
+                  },
+                })
+                let objValueset = {};
+                if(result.data) {
+                  objValueset[result.data.id] = result.data;
+                  store.dispatch({ type: SET_VALUESET, valueset: objValueset });
+                }
+                return result;
+                /*store.dispatch(setValueset(`reason_codes_${normalizedServiceType.code}`))
+                return getValueSet(`reason_codes_${normalizedServiceType.code}`);*/
+              }
             }),
           );
 
@@ -169,13 +198,15 @@ const VisitDetails = ({
   useEffect(() => {
     register({ name: 'serviceTypeCode' });
     register({ name: 'examinationCode' });
+    register({ name: 'examination' });
     initValueFunction([
       { serviceTypeCode },
       { examinationCode },
-      { isUrgent: priority > 1 ? true : false },
+      { examination }
     ]);
+
     return () => {
-      unregister(['serviceTypeCode', 'examinationCode']);
+      unregister(['serviceTypeCode', 'examinationCode', 'examination']);
     };
   }, [
     register,
@@ -227,25 +258,6 @@ const VisitDetails = ({
             />
             <StyledDivider variant={'fullWidth'} />
           </>
-        ) : null}
-        {!props.hasOwnProperty('disableButtonIsUrgent') ||
-        props.disableButtonIsUrgent === true ? (
-          <Grid
-            container
-            direction={'row'}
-            justify={'flex-start'}
-            alignItems={'center'}>
-            <span>{t('Is urgent?')}</span>
-            {/* Requested service - switch */}
-            <StyledSwitch
-              name='isUrgent'
-              register={register}
-              label_1={'No'}
-              label_2={'Yes'}
-              marginLeft={'40px'}
-              marginRight={'40px'}
-            />
-          </Grid>
         ) : null}
         {/* Requested service - select test */}
         <StyledAutoComplete
@@ -360,6 +372,7 @@ const VisitDetails = ({
 const mapStateToProps = (state, ownProps) => {
   return {
     props: ownProps,
+    service_types: state.listsBox.service_types
   };
 };
 export default connect(mapStateToProps, null)(VisitDetails);

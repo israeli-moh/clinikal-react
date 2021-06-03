@@ -10,7 +10,8 @@ export const getEmailRegexPattern = () => {
 };
 
 export const getCellPhoneRegexPattern = () => {
-  return /^\(?0([1-9]|[1-9][0-9])\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+ // return /^\(?0([1-9]|[1-9][0-9])\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+  return /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.0-9]*$/;
 };
 
 export const getOnlyNumbersRegexPattern = () => {
@@ -25,3 +26,9 @@ export const getOnlyLettersRegexPattern = () => {
   return /[~`!@#$%^&*()_={}:;,.<>+?"'\\/]|[0-9+]/gm;
   // return /[~`!@#$%^&()_={}[\]:;,.<>+\/?-\\"']|[0-9+]/gm;
 };
+
+export const getPatientNamePattern = () => {
+  return /[~!@#$%^&*={}:;,.<>+?\\/]|[0-9+]/gm;
+  // return /[~`!@#$%^&()_={}[\]:;,.<>+\/?-\\"']|[0-9+]/gm;
+};
+

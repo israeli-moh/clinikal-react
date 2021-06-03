@@ -29,7 +29,7 @@ export const setPatientDataWaitingForReleaseTableRows = function (
     'reasonForReferral',
     'time',
     'status',
-    'messages',
+    /*'messages',*/
     'encounterSheet',
   ];
 

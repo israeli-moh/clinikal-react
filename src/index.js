@@ -12,6 +12,7 @@ import FiltersReducer from 'Store/Reducers/FiltersReducer';
 import FhirDataReducer from 'Store/Reducers/FhirDataReducer';
 import ActiveDataReducer from 'Store/Reducers/ActiveDataReducer';
 import UiReducer from "Store/Reducers/UiReducer";
+import listBoxReducer from "Store/Reducers/ListsBoxReducer";
 import 'material-icons-font/material-icons-font.css';
 import thunk from 'redux-thunk';
 
@@ -25,7 +26,8 @@ const rootReducer = combineReducers({
   filters: FiltersReducer,
   fhirData: FhirDataReducer,
   active: ActiveDataReducer,
-  ui: UiReducer
+  ui: UiReducer,
+  listsBox: listBoxReducer
 });
 //Added export so I can use it in story book hopefully. Months later it worked :D. It is also used for to dispatch redux actions outside react component
 export const store = createStore(

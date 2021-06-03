@@ -42,6 +42,7 @@ import normalizeFhirServiceRequest from 'Utils/Helpers/FhirEntities/normalizeFhi
 import { Delete } from '@material-ui/icons';
 import { FHIR } from 'Utils/Services/FHIR';
 import { formatTime }  from 'Utils/Helpers/Datetime/formatDate';
+import isAllowed from 'Utils/Helpers/isAllowed';
 
 
 /**
@@ -63,6 +64,7 @@ const Fields = ({
   setRequiredErrors,
   permission,
   language_direction,
+  formatDate
 }) => {
   const [practitioners, setPreactitioners] = useState([]);
   const { control, watch, register, setValue, getValues } = useFormContext();
@@ -117,6 +119,10 @@ const Fields = ({
       }
     })();
   }, [serviceRequests]);
+
+  const isAllowAddNewInstruction = () => {
+    return isAllowed('add_new_treatment_instruction') === 'write' ? true : false;
+  }
 
   const createDataFromRecord = async ({ serviceReq, locked }) => {
     let serviceReqTemp = {
@@ -241,13 +247,16 @@ const Fields = ({
       <StyledConstantHeaders>
         {t('Instructions for treatment')}
       </StyledConstantHeaders>
-      <StyledTreatmentInstructionsButton
-        disabled={permission !== 'write'}
-        language_direction={language_direction}
-        onClick={addNewInstruction}>
-        <img alt='plus icon' src={PLUS} />
-        {t('Instructions for treatment')}
-      </StyledTreatmentInstructionsButton>
+      {permission === 'write' && isAllowAddNewInstruction() &&
+      <>
+        <StyledTreatmentInstructionsButton
+            language_direction={language_direction}
+            onClick={addNewInstruction}>
+          <img alt='plus icon' src={PLUS}/>
+          {t('Instructions for treatment')}
+        </StyledTreatmentInstructionsButton>
+      </>
+      }
       <hr />
       <StyledInstructions id='newRefInstructions'>
         {fields.map((item, index) => {
@@ -279,7 +288,7 @@ const Fields = ({
                         as={<input />}
                       />
                       {item.locked
-                        ? formatTime(item.authoredOn)
+                        ? formatTime(item.authoredOn, formatDate)
                         : ''}
                     </StyledTypographyHour>
                   </StyledCardContent>
@@ -314,7 +323,7 @@ const Fields = ({
                       item={item}
                     />
                   </Grid>
-                  <Grid item xs={3}>
+                  <Grid item xs={6}>
                     <TestTreatmentType
                       requiredErrors={requiredErrors}
                       index={index}
@@ -322,8 +331,8 @@ const Fields = ({
                       setRequiredErrors={setRequiredErrors}
                     />
                   </Grid>
-                  <Grid item xs={2}></Grid>
-                  <Grid item xs={4}>
+                  {/*<Grid item xs={2}></Grid>*/}
+                  <Grid justify="flex-start" item xs={3}>
                     <TestTreatmentReferral
                       setRequiredErrors={setRequiredErrors}
                       requiredErrors={requiredErrors}
@@ -331,12 +340,13 @@ const Fields = ({
                       item={item}
                     />
                   </Grid>
-
+                  <Grid container item xs={12}>
                   <TestTreatmentInstructions
                     index={index}
                     item={item}
                     handlePopUpProps={handlePopUpProps}
                   />
+                  </Grid>
                 </Grid>
               </StyledCardInstruction>
                 <StyledCardInstruction>
@@ -363,7 +373,7 @@ const Fields = ({
                         as={<input />}
                       />
                       {item.locked && item.test_treatment_status === 'done'
-                        ? formatTime(item.occurrence)
+                        ? formatTime(item.occurrence, formatDate)
                         : ''}
                     </StyledTypographyHour>
                   </StyledCardContent>
@@ -383,37 +393,45 @@ const Fields = ({
                   </Grid>
                   {!item.locked ? (
                     <Grid container direction='row' justify='flex-end'>
+                    <div
+                      style={{
+                        paddingRight:language_direction === 'ltr' ? '25px' : null,
+                        paddingLeft:language_direction === 'rtl' ? '25px' : null,
+                        paddingBottom:'25px',
+                      }}
+                      onClick={async () => {
+                    // Since there is no disabled option for icons I check the permission inside the function
+                    if (permission !== 'write') return;
+                    const { Instruction } = getValues({
+                      nest: true,
+                    });
+                    //console.log(Instruction);
+                    if (
+                      Instruction &&
+                      Instruction[index] &&
+                      Instruction[index].serviceReqID &&
+                      Instruction[index].serviceReqID !== ''
+                    ) {
+                      await FHIR('ServiceRequests', 'doWork', {
+                        functionName: 'deleteServiceRequest',
+                        functionParams: {
+                          _id: Instruction[index].serviceReqID,
+                        },
+                      });
+                      delete Instruction[index];
+                      setValue('medicationRequest', Instruction);
+                    }
+                    setRequiredErrors((prevState) => {
+                      const cloneState = [...prevState];
+                      cloneState.splice(index, 1);
+                      return cloneState;
+                    });
+                    remove(index);
+                  }}
+                    >
                       <Delete
                         color={permission === 'view' ? 'disabled' : 'primary'}
-                        onClick={async () => {
-                          // Since there is no disabled option for icons I check the permission inside the function
-                          if (permission !== 'write') return;
-                          const { Instruction } = getValues({
-                            nest: true,
-                          });
-                          //console.log(Instruction);
-                          if (
-                            Instruction &&
-                            Instruction[index] &&
-                            Instruction[index].serviceReqID &&
-                            Instruction[index].serviceReqID !== ''
-                          ) {
-                            await FHIR('ServiceRequests', 'doWork', {
-                              functionName: 'deleteServiceRequest',
-                              functionParams: {
-                                _id: Instruction[index].serviceReqID,
-                              },
-                            });
-                            delete Instruction[index];
-                            setValue('medicationRequest', Instruction);
-                          }
-                          setRequiredErrors((prevState) => {
-                            const cloneState = [...prevState];
-                            cloneState.splice(index, 1);
-                            return cloneState;
-                          });
-                          remove(index);
-                        }}
+
                         style={{ cursor: 'pointer' }}
                       />
                       <span
@@ -425,6 +443,7 @@ const Fields = ({
                         }}>
                         {t('Delete Instruction')}
                       </span>
+                    </div>
                     </Grid>
                   ) : null}
                 </Grid>

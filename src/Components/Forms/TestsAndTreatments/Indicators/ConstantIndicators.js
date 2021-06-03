@@ -32,7 +32,7 @@ const ConstantIndicators = ({ constantIndicators, setFormDirty }) => {
                 id={value.value}
                 label={t(value.label) + ' (' + t(value.unit) + ')'}
                 value={value.value}
-                mask={value.mask}
+                placeholder={value.placeholder}
                 name={value.name}
                 componenttype={value.componenttype}
                 disabled={value.disabled}

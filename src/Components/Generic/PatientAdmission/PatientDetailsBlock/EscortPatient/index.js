@@ -16,7 +16,8 @@ const EscortPatient = ({
   relatedPersonId,
   encounterArrivalWay,
   handleLoading,
-  writePermission
+  writePermission,
+  initValueFunction
 }) => {
   const {
     errors,
@@ -44,7 +45,7 @@ const EscortPatient = ({
 
   useEffect(() => {
     register({ name: 'arrivalWay' });
-    setValue([{ arrivalWay: encounterArrivalWay || '' }]);
+    initValueFunction([{ arrivalWay: encounterArrivalWay || '' }]);
     return () => {
       unregister('arrivalWay');
     };
@@ -65,12 +66,17 @@ const EscortPatient = ({
           );
           setName(normalizedRelatedPerson.name);
           setMobilePhone(normalizedRelatedPerson.mobilePhone);
-          reset({
+          /*reset({
             ...getValues(),
             isEscorted: relatedPersonId ? true : false,
             escortMobilePhone: normalizedRelatedPerson.mobilePhone,
             escortName: normalizedRelatedPerson.name,
-          });
+          });*/
+          initValueFunction([{
+            isEscorted: relatedPersonId ? true : false,
+            escortMobilePhone: normalizedRelatedPerson.mobilePhone,
+            escortName: normalizedRelatedPerson.name
+          }]);
           handleLoading('escort');
         } else {
           handleLoading('escort');
@@ -180,7 +186,13 @@ const EscortPatient = ({
               setName(event.target.value);
               return event.target.value;
             }}
-            as={<CustomizedTextField width={'70%'} label={t('Escort name')} />}
+            as={<CustomizedTextField
+                width={'70%'}
+                label={t('Escort name')}
+                InputProps={{
+                  autoComplete: 'off',
+                }}
+            />}
           />
           <Controller
             name='escortMobilePhone'
@@ -202,6 +214,9 @@ const EscortPatient = ({
               <CustomizedTextField
                 width={'70%'}
                 label={t('Escort cell phone')}
+                InputProps={{
+                  autoComplete: 'off',
+                }}
               />
             }
           />

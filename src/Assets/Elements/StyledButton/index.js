@@ -7,6 +7,7 @@ export const StyledButton = styled(Button)`
   width: ${(props) => (props.width ? props.width : '158px')};
   letter-spacing: ${({ letterSpacing }) => letterSpacing || null};
   font-weight: ${({ fontWeight }) => fontWeight || null};
+  font-size: ${({ fontSize }) => fontSize || null};
   margin: ${(props) => props.margin};
   .MuiButton-startIcon {
     margin-left: 8px;

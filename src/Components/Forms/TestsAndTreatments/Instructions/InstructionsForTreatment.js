@@ -59,11 +59,12 @@ const InstructionsForTreatment = ({
   const [serviceRequests, setServiceRequests] = useState([]);
   const { t } = useTranslation();
   const history = useHistory();
-
+  const saveProcess = React.useRef( false);
   const { handleSubmit, setValue, watch, getValues } = methods;
 
   const isFormDirty = () => {
     // check in indicators section;
+    if (permissionHandler() !== 'write' )return false;
     if (formDirty) return true;
 
     //check in instructions section
@@ -78,6 +79,7 @@ const InstructionsForTreatment = ({
       const diffExists = wasSomethingChanged(serviceRequest, serviceRequests);
       if (diffExists) return true;
     }
+    return false;
   };
 
   function wasSomethingChanged(serviceRequest, serviceRequests) {
@@ -106,9 +108,13 @@ const InstructionsForTreatment = ({
           ) {
             returnThis = false;
           }
-          return returnThis;
+          if (returnThis) {
+            return true;
+          }
         }
-        return returnThis;
+        if (returnThis) {
+          return true;
+        }
       }
     };
   }
@@ -191,8 +197,8 @@ const InstructionsForTreatment = ({
   };
   const onSubmit = (data) => {
     //  console.log('data', JSON.stringify(data));
-    // console.log(isRequiredValidation(data));
-    if (permissionHandler() !== 'write') return false;
+    if (permissionHandler() !== 'write' || saveProcess.current) return false;
+    saveProcess.current =  true;
     if (isFormDirty()) {
       setdisabledOnSubmit(true);
       const indicatorsFHIRArray = saveIndicatorsOnSubmit();
@@ -210,6 +216,7 @@ const InstructionsForTreatment = ({
       console.log(returnThis);
       return returnThis;
     } else {
+      setdisabledOnSubmit(false);
       return false;
     }
   };
@@ -357,6 +364,9 @@ const InstructionsForTreatment = ({
         case 'waiting_for_xray':
           cloneEncounter.status = 'in-progress';
           break;
+        case 'during_treatment':
+          cloneEncounter.status = 'in-progress';
+          break;
       }
       cloneEncounter.extensionSecondaryStatus = selectedStatus;
       cloneEncounter.practitioner = practitioner;
@@ -438,6 +448,7 @@ const InstructionsForTreatment = ({
     { label: 'Waiting for nurse', value: 'waiting_for_nurse' },
     { label: 'Waiting for doctor', value: 'waiting_for_doctor' },
     { label: 'Waiting for xray', value: 'waiting_for_xray' },
+    { label: 'During treatment', value: 'during_treatment' }
   ];
 
   return (

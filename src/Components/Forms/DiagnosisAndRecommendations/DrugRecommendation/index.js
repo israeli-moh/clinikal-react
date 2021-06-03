@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Title from 'Assets/Elements/Title';
 import { StyledFormGroup } from 'Assets/Elements/StyledFormGroup';
-import { StyledSelectTemplateButton } from 'Assets/Elements/StyledSelectTempleteButton';
+import  StyledSelectTemplateButton  from 'Assets/Elements/StyledSelectTempleteButton';
 import { useTranslation } from 'react-i18next';
 import CustomizedTextField from 'Assets/Elements/CustomizedTextField';
 import { Grid, MenuItem, Typography } from '@material-ui/core';
@@ -13,12 +13,18 @@ import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirMedicationRequest from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirMedicationRequest';
 import { VirtualizedListboxComponent } from 'Assets/Elements/AutoComplete/VirtualizedListbox';
 import { StyledAutoComplete } from 'Assets/Elements/AutoComplete/StyledAutoComplete';
+import { StyledPopper } from 'Assets/Elements/AutoComplete/Popper/Style';
+import Tooltip from "@material-ui/core/Tooltip";
+import { store } from 'index';
+import StyledTooltip from 'Assets/Elements/StyledTooltip';
+
 
 const DrugRecommendation = ({
   encounterId,
   formatDate,
   handleLoading,
   initValueFunction,
+  languageDirection
 }) => {
   const { t } = useTranslation();
   const {
@@ -43,6 +49,24 @@ const DrugRecommendation = ({
     setValue(name, data);
   };
 
+  const popperWidthFixer = function (props) {
+    return (
+      <StyledPopper
+    {...props}
+    modifiers={{
+      setWidth: {
+        enabled: true,
+          order: 840,
+          fn(data) {
+          data.offsets.popper.width = data.styles.width = '700px';
+          return data;
+        },
+      },
+    }}
+    placement='bottom-start'
+      />
+  );
+  };
   const handlePopUpProps = (
     title,
     fields,
@@ -85,60 +109,24 @@ const DrugRecommendation = ({
     drugRoute: [],
     drugIntervals: [],
   });
+
   const fetchDrugsData = React.useCallback(async () => {
-    const APIsArray = [
-      FHIR('ValueSet', 'doWork', {
-        functionName: 'getValueSet',
-        functionParams: {
-          id: 'drugs_list',
-        },
-      }),
-      FHIR('ValueSet', 'doWork', {
-        functionName: 'getValueSet',
-        functionParams: {
-          id: 'drug_form',
-        },
-      }),
-      FHIR('ValueSet', 'doWork', {
-        functionName: 'getValueSet',
-        functionParams: {
-          id: 'drug_route',
-        },
-      }),
-      FHIR('ValueSet', 'doWork', {
-        functionName: 'getValueSet',
-        functionParams: {
-          id: 'drug_interval',
-        },
-      }),
-    ];
+
     try {
-      const drugsData = await Promise.all(APIsArray);
       // const drugList = [{ code: '123', display: 'medicine' }];
       // const drugIntervals = [{ code: '1234', display: '10minutes' }];
       setDrugsData({
         // drugList,
-        drugList:
-          drugsData[0].status === 200
-            ? drugsData[0].data.expansion.contains
-            : [],
-        drugForm:
-          drugsData[1].status === 200
-            ? drugsData[1].data.expansion.contains
-            : [],
-        drugRoute:
-          drugsData[2].status === 200
-            ? drugsData[2].data.expansion.contains
-            : [],
-        drugIntervals:
-          drugsData[3].status === 200
-            ? drugsData[3].data.expansion.contains
-            : [],
+        drugList : store.getState().listsBox.drugs_list.expansion.contains,
+        drugForm: store.getState().listsBox.drug_form.expansion.contains,
+        drugRoute: store.getState().listsBox.drug_route.expansion.contains,
+        drugIntervals: store.getState().listsBox.drug_interval.expansion.contains,
       });
     } catch (error) {
       console.log(error);
     }
   }, []);
+
 
   const fetchMedicationRequest = React.useCallback(async () => {
     try {
@@ -253,8 +241,12 @@ const DrugRecommendation = ({
               );
             } else {
               append({
-                drugName:
-                  normalizedFhirMedicationRequest.medicationCodeableConceptCode,
+                drugName: {
+                  code:
+                      normalizedFhirMedicationRequest.medicationCodeableConceptCode || '',
+                  display:
+                      normalizedFhirMedicationRequest.medicationCodeableConceptDisplay || '',
+                },
                 quantity: normalizedFhirMedicationRequest.doseQuantity || '',
                 drugForm: normalizedFhirMedicationRequest.methodCode || '',
                 drugRoute: normalizedFhirMedicationRequest.routeCode || '',
@@ -397,6 +389,7 @@ const DrugRecommendation = ({
                 disabled={permission === 'view' ? true : false}
                 as={
                   <StyledAutoComplete
+                    PopperComponent={popperWidthFixer}
                     blurOnSelect
                     disableClearable
                     selectOnFocus
@@ -407,16 +400,23 @@ const DrugRecommendation = ({
                     }}
                     getOptionLabel={(option) => option.display || ''}
                     renderOption={(option) => (
-                      <Typography noWrap>{option.display}</Typography>
+                      <Tooltip title={option.display} aria-label={option.display}>
+                        <Typography noWrap>{option.display}</Typography>
+                    </Tooltip>
                     )}
                     popupIcon={<KeyboardArrowDown />}
+                    input_direction={'ltr'}
                     renderInput={(params) => (
-                      <CustomizedTextField
-                        iconColor='#1976d2'
-                        width='30%'
-                        {...params}
-                        label={t('Drug Name')}
-                      />
+                      <StyledTooltip
+                        title={params.inputProps.value}
+                        aria-label={params.inputProps.value}>
+                        <CustomizedTextField
+                          iconColor='#1976d2'
+                          width='60%'
+                          {...params}
+                          label={t('Drug Name')}
+                        />
+                      </StyledTooltip>
                     )}
                   />
                 }
@@ -436,13 +436,16 @@ const DrugRecommendation = ({
                     const value = event.target.value;
                     console.log(value);
                     if (value) {
-                      const isNumber = /^[0-9]/;
+                     const isNumber = /^[0-9.]/;
                       if (isNumber.test(value[value.length - 1])) {
-                        if (value > 0) {
+                        if (value >= 0) {
                           return value;
                         } else {
                           return '';
                         }
+                      }
+                      if (typeof value === 'number') {
+                        return  value;
                       }
                     }
                     return '';

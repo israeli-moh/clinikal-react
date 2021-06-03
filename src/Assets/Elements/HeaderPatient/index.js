@@ -1,6 +1,6 @@
 import React from 'react';
 import StyledAppBar, { StyledBreadcrumbs, StyledIconButton } from './Style';
-import { Link, Typography } from '@material-ui/core';
+import { Typography } from '@material-ui/core';
 import { NavigateNext, NavigateBefore } from '@material-ui/icons';
 import CloseIcon from '@material-ui/icons/Close';
 
@@ -26,9 +26,9 @@ const HeaderPatient = ({
               );
             } else {
               return (
-                <Link color='inherit' href={option.url} key={optionIndex}>
+                <Typography color='inherit' style={{ fontWeight: 'bold' }} key={optionIndex}>
                   {option.text}
-                </Link>
+                </Typography>
               );
             }
           })}

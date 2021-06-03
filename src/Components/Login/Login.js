@@ -19,6 +19,8 @@ import LoginBG from './LoginBG';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import ErrorOutline from '@material-ui/icons/ErrorOutline';
 import { loginInstance } from 'Utils/Services/AxiosLoginInstance';
+import { getToken } from 'Utils/Helpers/getToken';
+import { LOGIN_LANGUAGES } from 'Components/Login/loginLanguages';
 
 const Login = ({ loginAction, history, status }) => {
   const { register, handleSubmit, errors } = useForm({
@@ -26,20 +28,37 @@ const Login = ({ loginAction, history, status }) => {
     defaultValues: {
       userName: '',
       password: '',
+      totp: '',
     },
     submitFocusError: true,
   });
   const { t } = useTranslation();
   const [buttonDisabled, setButtonDisabled] = useState(true);
   const [clientId, setClientId] = useState(null);
+  const [loginStatus, setLoginStatus] = useState(null);
+  const [connectDetails, setConnectDetails] = useState({});
+  const [langDir, setLangDir] = useState(null);
+  const [langCode, setLangCode] = useState(null);
+  const [translation, setTranslation] = useState([]);
+
+  /* error statuses */
+  const INVALID_GRANT = 'invalid_grant';
+  const MFA_REQUIRED = 'mfa_required';
+  const MFA_TOKEN_INVALID = 'mfa_token_invalid';
 
   useEffect(() => {
+      const languageCode = getToken('langCode');
+      const languageDir = getToken('langDir');
+      setLangCode(languageCode.length > 0 ? languageCode : 'en');
+      setLangDir(languageDir.length > 0 ? languageDir : 'ltr');
+      setTranslation(LOGIN_LANGUAGES[languageCode.length > 0 ? languageCode : 'en']);
+
       const userObj = {
         application_type: 'private',
         redirect_uris: [`${window.location.protocol}//${window.location.hostname}`],
         client_name:'clinikal app',
         token_endpoint_auth_method: 'client_secret_post',
-        contacts: ["me@example.org", "them@example.org"]
+        contacts: []
       };
 
       const response = loginInstance({'Content-Type': 'application/json'}).post('oauth2/default/registration', userObj);
@@ -53,50 +72,81 @@ const Login = ({ loginAction, history, status }) => {
   }, []);
 
   const onSubmit = (data) => {
-    console.log(clientId)
-    loginAction(clientId,data.userName, data.password, history);
+    setButtonDisabled(true);
+    if (!mfaProcess()) {
+      setConnectDetails(data);
+      const result = loginAction(clientId,data.userName, data.password, history);
+      result.then((err_status) => {
+        if (err_status !== 'success') {
+          setLoginStatus(err_status);
+          setButtonDisabled(false);
+        }
+      })
+    } else {
+      /* login with 2FA */
+      const result = loginAction(clientId,connectDetails.userName, connectDetails.password, history, data.totp);
+      result.then((err_status) => {
+        console.log(err_status)
+        if (err_status !== 'success') {
+          setLoginStatus(err_status)
+          setButtonDisabled(false);;
+        }
+      });
+    }
   };
 
-  const handleOnDelete = () => {
-    setCloneStatus('');
+  const mfaProcess = () => {
+     return (loginStatus !== MFA_REQUIRED && loginStatus !== MFA_TOKEN_INVALID) ? false : true;
+  }
+
+
+  const handleOnDeleteInvalidGrant = () => {
+     setLoginStatus(null);
   };
 
-  const [cloneStatus, setCloneStatus] = useState('');
-
-  useEffect(() => {
-    setCloneStatus(status);
-  }, [status]);
-
+  const handleOnDeleteMfaInvalid = () => {
+    setLoginStatus(MFA_REQUIRED);
+  };
 
 
   useEffect(() => {}, [status]);
   return (
-    <StyledLogin>
-      <LoginBG src={bg} />
-      <LoginForm onSubmit={handleSubmit(onSubmit)}>
+    <>
+    { langCode && (
+    <StyledLogin >
+      <LoginBG translation={translation} src={bg} />
+      <LoginForm dir={langDir} onSubmit={handleSubmit(onSubmit)}>
         <LoginTitle>
           <LoginLogo src={loginLogo} />
           <Typography variant={'h5'} align={'center'}>
-            קליניקל
+            {translation['clinikal']}
           </Typography>
         </LoginTitle>
         <Typography variant={'h4'} align={'center'}>
-          כניסה למערכת
+          {translation['login']}
         </Typography>
         <StyledDivider />
-        {cloneStatus === 'LOGIN_FAILED' && (
+        {loginStatus ===  INVALID_GRANT && (
           <StyledErrorChip
-            label='שם המשתמש ו/או הסיסמה שהוזנו אינם תקינים'
-            onDelete={handleOnDelete}
+            label={translation['invalid_username']}
+            onDelete={handleOnDeleteInvalidGrant}
           />
         )}
+        {loginStatus ===  MFA_TOKEN_INVALID && (
+        <StyledErrorChip
+          label={translation['code_not_valid']}
+          onDelete={handleOnDeleteMfaInvalid}
+          />
+        )}
+        {(!mfaProcess()) && (
+        <>
         <CustomizedTextField
           name='userName'
-          label={t('* שם המשתמש')}
+          label={`${translation['user_name']}*`}
           error={errors.userName ? true : false}
           helperText={errors.userName && errors.userName.message}
           fullWidth
-          lang_dir={'rtl'}
+          lang_dir={langDir}
           InputProps={{
             autoComplete: 'off',
             endAdornment: (errors.userName ? true : false) && (
@@ -106,23 +156,19 @@ const Login = ({ loginAction, history, status }) => {
             ),
           }}
           inputRef={register({
-            required: 'יש להזין ערך בשדה',
-            pattern: {
-              value: /^[a-zA-Z]+$/,
-              message: 'יש להזין רק אותיות באנגלית',
-            },
+            required: translation['value_required']
           })}
         />
         <CustomizedTextField
           name='password'
-          label={t('* סיסמה')}
+          label={`${translation['password']}*`}
           type={'password'}
           error={errors.password ? true : false}
           helperText={errors.password && errors.password.message}
           fullWidth
-          lang_dir={'rtl'}
+          lang_dir={langDir}
           inputRef={register({
-            required: 'יש להזין ערך בשדה',
+            required: translation['value_required'],
           })}
           InputProps={{
             autoComplete: 'off',
@@ -133,8 +179,43 @@ const Login = ({ loginAction, history, status }) => {
             ),
           }}
         />
+        </>
+        )}
+        {mfaProcess() && (
+        <CustomizedTextField
+          name='totp'
+          type={'number'}
+          label={`${translation['enter_code_from_auth_app']}*`}
+          error={errors.userName ? true : false}
+          helperText={errors.totp && errors.totp.message}
+          fullWidth
+          lang_dir={langDir}
+          InputProps={
+          {
+            autoComplete: 'off',
+            endAdornment: (errors.totp ? true : false) && (
+            < InputAdornment
+            position = 'end' >
+              < ErrorOutline
+            color = {'error'}
+            />
+            < /InputAdornment>
+          )
+          }}
+          inputRef={register({
+                     required: translation['value_required'],
+                     pattern: {
+                       value: /^[0-9]+$/,
+                    message: translation['only_numbers_allowed'],
+                    },
+          })}
+          onInput = {(e) =>{
+          e.target.value = e.target.value.substring(0,6)
+          }}
+        />
+        )}
         <CustomizedTableButton
-          label={t('כניסה למערכת')}
+          label={translation['login']}
           backGroundColor={'#002398'}
           variant={'contained'}
           color={'primary'}
@@ -147,6 +228,8 @@ const Login = ({ loginAction, history, status }) => {
         />
       </LoginForm>
     </StyledLogin>
+    )}
+   </>
   );
 };
 

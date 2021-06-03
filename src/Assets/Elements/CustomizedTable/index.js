@@ -93,7 +93,7 @@ const CustomizedTable = ({ tableHeaders, tableData }) => {
                               align={rowData.align}
                               options={rowData.options}
                               langDirection={rowData.langDirection}
-                              key={tableCellItemIndex}
+                              key={`changeableKey${Math.floor(Math.random() * 100)}`}
                               mode={rowData.mode}
                             />
                           );

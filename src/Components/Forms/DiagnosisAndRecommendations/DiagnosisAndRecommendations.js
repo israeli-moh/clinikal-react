@@ -17,6 +17,8 @@ import { store } from 'index';
 import normalizeFhirQuestionnaireResponse from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirQuestionnaireResponse';
 import { fhirFormatDateTime } from 'Utils/Helpers/Datetime/formatDate';
 import Loader from "../../../Assets/Elements/Loader";
+import { setValueset } from 'Store/Actions/ListsBoxActions/ListsBoxActions';
+import { answerType } from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
 
 const DiagnosisAndRecommendations = ({
   patient,
@@ -28,6 +30,7 @@ const DiagnosisAndRecommendations = ({
   functionToRunOnTabChange,
   validationFunction,
   isSomethingWasChanged,
+  listsBox
 }) => {
   const methods = useForm({
     mode: 'onBlur',
@@ -49,7 +52,27 @@ const DiagnosisAndRecommendations = ({
 
   const { handleSubmit, setValue, register, unregister, getValues } = methods;
   const [loading, setLoading] = useState(true);
+  const [ListsLoaded, setListsLoaded] = useState(false);
   const { t } = useTranslation();
+  const saveProcess = React.useRef( false);
+
+  // Load form lists into redux in the first setting up
+  useEffect(() => {
+    (async () => {
+      const APILists = [];
+      const systemLists = ['drugs_list', 'drug_form', 'drug_route', 'drug_interval']
+      systemLists.forEach((value => {
+            if ( !listsBox.hasOwnProperty(value)) {
+              APILists.push(
+                  store.dispatch(setValueset(value))
+              )
+            }
+          }
+      ));
+      await Promise.all(APILists);
+      setListsLoaded(true);
+    })();
+  }, []);
 
   /*
    * <FORM DIRTY FUNCTIONS>
@@ -80,15 +103,16 @@ const DiagnosisAndRecommendations = ({
    * compare initValueObj with currentValues and find changes
    * */
   const isFormDirty = () => {
+    if (permissionHandler() !== 'write' )return false;
     const currentValues = getValues({ nest: true });
     console.log(currentValues);
     console.log(initValueObj);
 
     const emptyInFirst = [
-      'diagnosisDetails',
-      'findingsDetails',
+      'physicalExamination',
+      'medicalAnamnesis',
+      'diagnosisCodes',
       'instructionsForFurtherTreatment',
-      'treatmentDetails',
       'evacuationWay',
       'decision',
       'numberOfDays'
@@ -101,6 +125,17 @@ const DiagnosisAndRecommendations = ({
       ) {
         return true;
       }
+    }
+    //check if drugRecommendation added
+    if (
+        typeof initValueObj['drugRecommendation'] === 'undefined' &&
+        (
+            typeof currentValues['drugRecommendation'] !== 'undefined' &&
+            currentValues['drugRecommendation'].length > 0 &&
+            currentValues['drugRecommendation'][0]['drugName'] !== ''
+        )
+    ) {
+      return true;
     }
 
     for (const index in initValueObj) {
@@ -146,27 +181,13 @@ const DiagnosisAndRecommendations = ({
     });
   };
 
-  const answerType = (type, data) => {
-    if (type === 'string') {
-      return [
-        {
-          valueString: data,
-        },
-      ];
-    } else if (type === 'integer') {
-      return [
-        {
-          valueInteger: data,
-        },
-      ];
-    } else {
-      return `No such type: ${type}`;
-    }
-  };
-
   const [
     normalizedQuestionnaireResponse,
     setNormalizedQuestionnaireResponse,
+  ] = React.useState({});
+const [
+  normalizedPatientAdmissionQuestionnaireResponse,
+    setNormalizePatientAdmissionQuestionnaireResponse,
   ] = React.useState({});
 
   React.useEffect(() => {
@@ -207,6 +228,43 @@ const DiagnosisAndRecommendations = ({
           { questionnaireResponseId: normalizedFhirQuestionnaireResponse.id },
         ]);
         handleLoading('questionnaireResponse');
+
+        /* fetch patient admission questionnaire for add to background diseases */
+        const patientAdmissionQ = await FHIR('Questionnaire', 'doWork', {
+          functionName: 'getQuestionnaire',
+          functionParams: {
+            QuestionnaireName: 'medical_admission_questionnaire',
+          },
+        });
+        const patientAdmissionQuestionnaireResponse = await FHIR(
+          'QuestionnaireResponse',
+          'doWork',
+          {
+            functionName: 'getQuestionnaireResponse',
+            functionParams: {
+              encounterId: encounter.id,
+              patientId: patient.id,
+              questionnaireId: patientAdmissionQ.data.entry[1].resource.id,
+            },
+          },
+        );
+        let normalizedFhirPatientAdmissionQuestionnaireResponse = {};
+        if (patientAdmissionQuestionnaireResponse.data.total) {
+          normalizedFhirPatientAdmissionQuestionnaireResponse = normalizeFhirQuestionnaireResponse(
+            patientAdmissionQuestionnaireResponse.data.entry[1].resource,
+          );
+          setNormalizePatientAdmissionQuestionnaireResponse(
+            patientAdmissionQuestionnaireResponse,
+          );
+        }
+        const patientAdmissionQuestionnaire = patientAdmissionQ.data.entry[1].resource;
+        register({ name: 'patientAdmissionQuestionnaire' });
+        register({ name: 'patientAdmissionQuestionnaireResponseId' });
+        initValue([
+          { patientAdmissionQuestionnaire: patientAdmissionQuestionnaire },
+          { patientAdmissionQuestionnaireResponseId: normalizedFhirPatientAdmissionQuestionnaireResponse.id },
+        ]);
+
       } catch (error) {
         console.log(error);
         handleLoading('questionnaireResponse');
@@ -307,7 +365,8 @@ const DiagnosisAndRecommendations = ({
 
   const onSubmit = (data) => {
     setdisabledOnSubmit(true);
-    if (permissionHandler() === 'view') return false;
+    if (permissionHandler() === 'view' || saveProcess.current) return false;
+    saveProcess.current = true;
     if (isFormDirty()) {
       if (!data) data = getValues({ nest: true });
       try {
@@ -319,16 +378,12 @@ const DiagnosisAndRecommendations = ({
           };
           switch (i.linkId) {
             case '1':
-              if (data.findingsDetails)
-                item['answer'] = answerType(i.type, data.findingsDetails);
+              if (data.medicalAnamnesis)
+                item['answer'] = answerType(i.type, data.medicalAnamnesis);
               break;
             case '2':
-              if (data.diagnosisDetails)
-                item['answer'] = answerType(i.type, data.diagnosisDetails);
-              break;
-            case '3':
-              if (data.treatmentDetails)
-                item['answer'] = answerType(i.type, data.treatmentDetails);
+              if (data.physicalExamination)
+                item['answer'] = answerType(i.type, data.physicalExamination);
               break;
             case '4':
               if (data.instructionsForFurtherTreatment)
@@ -349,6 +404,11 @@ const DiagnosisAndRecommendations = ({
               if (data.numberOfDays)
                 item['answer'] = answerType(i.type, data.numberOfDays);
               break;
+            case '8':
+               (data.diagnosisCodes && data.diagnosisCodes.length > 0) ?
+                item['answer'] = answerType(i.type, data.diagnosisCodes.join('|')) :
+                item['answer'] = answerType(i.type, null);
+              break;
             default:
               break;
           }
@@ -361,6 +421,8 @@ const DiagnosisAndRecommendations = ({
               questionnaireResponseId: data.questionnaireResponseId,
               questionnaireResponseParams: {
                 item: items,
+                author: store.getState().login.userID,
+                authored: fhirFormatDateTime()
               },
             }),
           );
@@ -382,6 +444,52 @@ const DiagnosisAndRecommendations = ({
               },
             }),
           );
+        }
+        if (data.addToBD) {
+          data.diagnosisCodes.forEach((diagnosis) => {
+            APIsArray.push(
+              FHIR('Condition', 'doWork', {
+                functionParams: {
+                  condition: {
+                    categorySystem:
+                      'http://clinikal/condition/category/medical_problem',
+                    codeSystem: 'http://clinikal/diagnosis/type/bk_diseases',
+                    codeCode: diagnosis,
+                    patient: patient.id,
+                    recorder: store.getState().login.userID,
+                    clinicalStatus: 'active',
+                    encounter: encounter.id,
+                  },
+                },
+                functionName: 'createCondition',
+              }),
+            );
+            const items = data.patientAdmissionQuestionnaire.item.map((i) => {
+              const item = {
+                linkId: i.linkId,
+                text: i.text,
+              };
+              // eslint-disable-next-line default-case
+              switch (i.linkId) {
+                //bk_diseases
+                case '6':
+                    item['answer'] = answerType(i.type, true);
+                  break;
+              }
+              return item;
+            });
+            APIsArray.push(
+              FHIR('QuestionnaireResponse', 'doWork', {
+                functionName: 'patchQuestionnaireResponse',
+                questionnaireResponseId: data.patientAdmissionQuestionnaireResponseId,
+                questionnaireResponseParams: {
+                  item: items,
+                  author: store.getState().login.userID,
+                  authored: fhirFormatDateTime()
+                },
+              }),
+            );
+          });
         }
         if (data.drugRecommendation && data.drugRecommendation.length) {
           data.drugRecommendation.forEach((drug, drugIndex) => {
@@ -443,6 +551,7 @@ const DiagnosisAndRecommendations = ({
         console.log(error);
       }
     } else {
+      saveProcess.current = false;
       return false;
     }
   };
@@ -505,12 +614,15 @@ const DiagnosisAndRecommendations = ({
         <form onSubmit={handleSubmit(onSubmit)}>
           <DiagnosisAndTreatment initValueFunction={initValue} />
           <RecommendationsOnRelease initValueFunction={initValue} />
-          <DrugRecommendation
-            encounterId={encounter.id}
-            formatDate={formatDate}
-            handleLoading={handleLoading}
-            initValueFunction={initValue}
-          />
+          {ListsLoaded && (
+              <DrugRecommendation
+                  encounterId={encounter.id}
+                  formatDate={formatDate}
+                  handleLoading={handleLoading}
+                  initValueFunction={initValue}
+                  languageDirection={languageDirection}
+              />
+          )}
           <DecisionOnRelease initValueFunction={initValue} />
           <SaveForm
             statuses={statuses}
@@ -536,6 +648,7 @@ const mapStateToProps = (state) => {
     languageDirection: state.settings.lang_dir,
     formatDate: state.settings.format_date,
     verticalName: state.settings.clinikal_vertical,
+    listsBox: state.listsBox,
   };
 };
 export default connect(mapStateToProps, null)(DiagnosisAndRecommendations);

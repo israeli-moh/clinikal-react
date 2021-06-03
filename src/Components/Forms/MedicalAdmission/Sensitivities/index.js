@@ -11,6 +11,7 @@ import { useSelector } from 'react-redux';
 import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirCondition from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirCondition';
 import {ParseQuestionnaireResponseBoolean} from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
+import { store } from 'index';
 
 const Sensitivities = ({
   defaultRenderOptionFunction,
@@ -79,21 +80,23 @@ const Sensitivities = ({
                 const normalizedCondition = normalizeFhirCondition(
                   condition.resource,
                 );
-                conditionCodes.push({
-                  reasonCode: {
-                    name: normalizedCondition.codeText,
+                if (!conditionInitIds.includes(normalizedCondition.codeCode)) {
+                  conditionCodes.push({
+                    reasonCode: {
+                      name: normalizedCondition.codeText,
+                      code: normalizedCondition.codeCode,
+                    },
+                    serviceType: {
+                      code: '',
+                      name: '',
+                    },
+                  });
+                  conditionIds[normalizedCondition.codeCode] = {
+                    id: normalizedCondition.id,
                     code: normalizedCondition.codeCode,
-                  },
-                  serviceType: {
-                    code: '',
-                    name: '',
-                  },
-                });
-                conditionIds[normalizedCondition.codeCode] = {
-                  id: normalizedCondition.id,
-                  code: normalizedCondition.codeCode,
-                };
-                conditionInitIds.push(normalizedCondition.codeCode)
+                  };
+                  conditionInitIds.push(normalizedCondition.codeCode)
+                }
               }
             });
             setSelectedList(conditionCodes);
@@ -131,12 +134,12 @@ const Sensitivities = ({
 
     (async () => {
       try {
-        const sensitivitiesResponse = await getValueSet('sensitivities');
+        const sensitivitiesResponse = store.getState().listsBox.sensitivities;
         if (active) {
           const options = [];
           const servicesTypeObj = {};
           await Promise.all(
-            sensitivitiesResponse.data.expansion.contains.map((sensitive) => {
+              sensitivitiesResponse.expansion.contains.map((sensitive) => {
               const normalizedSensitiveSet = normalizeFhirValueSet(sensitive);
               const optionObj = {};
               optionObj['serviceType'] = {

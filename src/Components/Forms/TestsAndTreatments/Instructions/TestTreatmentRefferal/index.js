@@ -130,12 +130,12 @@ const TestTreatmentReferral = ({
         />
 
         <StyledIconedButton
-          disabled={item.locked && reason_referance_doc_id === undefined}
+          disabled={encounter.status === 'finished' && typeof reason_referance_doc_id === 'undefined'}
           onClick={
             /* !(reason_referance_doc_id && encounter.status === 'completed') &&*/
-            item.locked === false
-              ? createNewLetter
-              : () => getLetterIfExists(reason_referance_doc_id)
+            encounter.status === 'finished' && typeof reason_referance_doc_id !== 'undefined'
+              ? () => getLetterIfExists(reason_referance_doc_id)
+              : createNewLetter
           }
           /* name={`Instruction[${index}].test_treatment_referral`}*/
         >

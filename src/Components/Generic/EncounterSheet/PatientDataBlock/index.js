@@ -170,6 +170,13 @@ const PatientDataBlock = ({
           }
         }
       })
+    } else {
+      setAdmissionForm({
+        label: t('To admission form'),
+        variant: 'text',
+        color: 'primary',
+        mode: 'view'
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounter, patient]);

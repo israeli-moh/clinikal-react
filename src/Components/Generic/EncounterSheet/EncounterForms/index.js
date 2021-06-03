@@ -18,7 +18,8 @@ const EncounterForms = ({
   formatDate,
   prevEncounterId,
   verticalName,
-  isSomethingWasChanged
+  isSomethingWasChanged,
+  forceEncounterSheetUpdate
 }) => {
   const [formsPerSheet, setFormsPerSheet] = React.useState();
   const { t } = useTranslation();
@@ -56,11 +57,16 @@ const EncounterForms = ({
   React.useEffect(() => {
     (async () => {
       try {
-        const forms = await getForms(
-          encounter.serviceTypeCode,
-          encounter.examinationCode,
-        );
-        setFormsPerSheet(forms);
+       if (typeof encounter.serviceTypeCode !== 'undefined' && encounter.serviceTypeCode !== null &&
+         typeof encounter.examinationCode !== 'undefined' && encounter.examinationCode !== null
+       ) {
+         const forms = await getForms(
+           encounter.serviceTypeCode,
+           encounter.examinationCode,
+         );
+         setFormsPerSheet(forms);
+       }
+
       } catch (error) {
         console.log(error);
       }
@@ -80,6 +86,7 @@ const EncounterForms = ({
             tabs={formsPerSheet}
             prevEncounterId={prevEncounterId}
             isSomethingWasChanged={isSomethingWasChanged}
+            forceEncounterSheetUpdate={forceEncounterSheetUpdate}
           />
         ) : null}
       </StyledPatientFiles>

@@ -13,11 +13,15 @@ import {
   StyledTypography,
   StyledChip,
   StyledContentBlock,
+  StyledGrid
 } from './Style';
 import { useTranslation } from 'react-i18next';
 import { Grid } from '@material-ui/core';
+import Tooltip from "@material-ui/core/Tooltip";
 
-const MedicalIssue = ({ title, items, currResponse, prevResponse, linkId }) => {
+
+
+const MedicalIssue = ({ title, items, currResponse, prevResponse, linkId , langDirection}) => {
   const { t } = useTranslation();
 
   return (
@@ -31,15 +35,17 @@ const MedicalIssue = ({ title, items, currResponse, prevResponse, linkId }) => {
           <StyledTypography>{t('Not known')}</StyledTypography>
         ) : items.length ? (
           <Grid container spacing={2}>
-            <Grid item>
+            <StyledGrid item>
               <Grid container spacing={2}>
                 {items.map((issue, index) => (
-                  <Grid item key={index}>
-                    <StyledChip color='primary' label={t(issue)} />
-                  </Grid>
+                  <StyledGrid item key={index}>
+                    <Tooltip title={t(issue)} aria-label={t(issue)}>
+                      <StyledChip color='primary' label={t(issue)} dir={langDirection ? langDirection : 'inherit'} />
+                    </Tooltip>
+                  </StyledGrid>
                 ))}
               </Grid>
-            </Grid>
+            </StyledGrid>
           </Grid>
         ) : null}
       </StyledContentBlock>

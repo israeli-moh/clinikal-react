@@ -10,7 +10,10 @@ import { FormHelperText } from '@material-ui/core';
 import { useSelector } from 'react-redux';
 import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirCondition from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirCondition';
-import {ParseQuestionnaireResponseBoolean} from "../../../../Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem";
+import {ParseQuestionnaireResponseBoolean} from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
+import { store } from 'index';
+import { longCodeListOptions } from 'Assets/Elements/CustomizedSelectCheckList/RenderTemplates/longCodeListOptions';
+import { isRTLLanguage } from 'Utils/Helpers/language';
 
 const BackgroundDiseases = ({
   defaultRenderOptionFunction,
@@ -35,6 +38,7 @@ const BackgroundDiseases = ({
 
   const direction = useSelector((state) => state.settings.lang_dir);
 
+  const [backgroundDiseasesLang, setBackgroundDiseasesLang] = useState('he');
   const [backgroundDiseasesList, setBackgroundDiseasesList] = useState([]);
   const [servicesTypeOpen, setServicesTypeOpen] = useState(false);
   const loadingBackgroundDiseasesList =
@@ -78,21 +82,27 @@ const BackgroundDiseases = ({
                 const normalizedCondition = normalizeFhirCondition(
                   condition.resource,
                 );
-                conditionCodes.push({
-                  reasonCode: {
-                    name: normalizedCondition.codeText,
+                //ignore duplicates
+                if (!conditionInitIds.includes(normalizedCondition.codeCode)) {
+
+                  conditionCodes.push({
+                    reasonCode: {
+                      name: normalizedCondition.codeText,
+                      code: normalizedCondition.codeCode,
+                    },
+                    serviceType: {
+                      code: '',
+                      name: '',
+                    },
+                  });
+                  conditionIds[normalizedCondition.codeCode] = {
+                    id: normalizedCondition.id,
                     code: normalizedCondition.codeCode,
-                  },
-                  serviceType: {
-                    code: '',
-                    name: '',
-                  },
-                });
-                conditionIds[normalizedCondition.codeCode] = {
-                  id: normalizedCondition.id,
-                  code: normalizedCondition.codeCode,
-                };
-                conditionInitIds.push(normalizedCondition.codeCode)
+                  };
+
+                  conditionInitIds.push(normalizedCondition.codeCode)
+
+                }
               }
             });
             setSelectedList(conditionCodes);
@@ -126,6 +136,10 @@ const BackgroundDiseases = ({
     prevEncounterResponse,
   ]);
 
+  const medicalAdmissionChipLabel = (selected) => {
+    return backgroundDiseasesLang !== 'en' ? `${t(selected.reasonCode.name)}` : selected.reasonCode.name;
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -135,12 +149,13 @@ const BackgroundDiseases = ({
 
     (async () => {
       try {
-        const sensitivitiesResponse = await getValueSet('bk_diseases');
+        const sensitivitiesResponse = store.getState().listsBox.bk_diseases;
+        setBackgroundDiseasesLang(sensitivitiesResponse.language)
         if (active) {
           const options = [];
           const servicesTypeObj = {};
           await Promise.all(
-            sensitivitiesResponse.data.expansion.contains.map((sensitive) => {
+              sensitivitiesResponse.expansion.contains.map((sensitive) => {
               const normalizedSensitiveSet = normalizeFhirValueSet(sensitive);
               const optionObj = {};
               optionObj['serviceType'] = {
@@ -183,10 +198,13 @@ const BackgroundDiseases = ({
           setServicesTypeOpen={setServicesTypeOpen}
           valueSetCode={'backgroundDiseasesCodes'}
           labelInputText={'Diseases details'}
-          // helperErrorText={'Some error text'}
-          defaultRenderOptionFunction={defaultRenderOptionFunction}
-          defaultChipLabelFunction={defaultChipLabelFunction}
-          sortByTranslation
+          popperWidth={700}
+          popperLanguageDirection={isRTLLanguage(backgroundDiseasesLang) ? 'rtl' : 'ltr'}
+          //if the language is english the list will be list of professional codes
+          defaultRenderOptionFunction={backgroundDiseasesLang === 'en' ? longCodeListOptions : defaultRenderOptionFunction}
+          defaultChipLabelFunction={medicalAdmissionChipLabel}
+          sortByTranslation={!backgroundDiseasesLang === 'en'}
+          virtual
         />
       )}
     </StyleBackgroundDiseases>

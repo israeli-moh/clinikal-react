@@ -5,8 +5,10 @@ import { Controller, useFormContext } from 'react-hook-form';
 import CustomizedTextField from 'Assets/Elements/CustomizedTextField';
 import { StyledInsulation, StyledIsUrgent } from './Style';
 import { useTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
+import { setValueset } from 'Store/Actions/ListsBoxActions/ListsBoxActions';
 
-const UrgentAndInsulation = ({ requiredUrgent, requiredInsulation, items, initValueFunction, priority }) => {
+const UrgentAndInsulation = ({ requiredUrgent, requiredInsulation, items, initValueFunction, priority, formsSettings }) => {
   const { t } = useTranslation();
 
   const { register, watch, setValue, control, permission } = useFormContext();
@@ -59,10 +61,14 @@ const UrgentAndInsulation = ({ requiredUrgent, requiredInsulation, items, initVa
       }
     });
     setInsulationInstructionState(itemsObj[2]);
+    if ( formsSettings.clinikal_forms_hide_insulation !== '1') {
+      initValueFunction([
+        {
+          isInsulationInstruction: itemsObj[1],
+        }
+      ]);
+    }
     initValueFunction([
-      {
-        isInsulationInstruction: itemsObj[1],
-      },
       {
         nursingDetails: itemsObj[3],
       }
@@ -96,7 +102,7 @@ const UrgentAndInsulation = ({ requiredUrgent, requiredInsulation, items, initVa
         </Grid>
       </StyledIsUrgent>
       <StyledInsulation>
-        <Grid
+        {formsSettings.clinikal_forms_hide_insulation !== '1' && (<Grid
           container
           direction={'row'}
           justify={'flex-start'}
@@ -117,7 +123,7 @@ const UrgentAndInsulation = ({ requiredUrgent, requiredInsulation, items, initVa
             marginLeft={'40px'}
             marginRight={'33px'}
           />
-        </Grid>
+        </Grid>)}
         {watchisInsulationInstruction && (
           <Controller
             control={control}
@@ -136,4 +142,13 @@ const UrgentAndInsulation = ({ requiredUrgent, requiredInsulation, items, initVa
     </React.Fragment>
   );
 };
-export default UrgentAndInsulation;
+
+const mapStateToProps = (state) => {
+  return {
+    formsSettings: state.settings.clinikal.forms,
+  };
+};
+export default connect(mapStateToProps )(UrgentAndInsulation);
+
+
+

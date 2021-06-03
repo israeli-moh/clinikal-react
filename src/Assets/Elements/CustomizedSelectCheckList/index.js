@@ -21,7 +21,9 @@ import CustomizedTextField from '../CustomizedTextField';
 import { useTranslation } from 'react-i18next';
 import matchSorter from 'match-sorter';
 import { useFormContext } from 'react-hook-form';
-import { StyledAutocomplete } from './Style';
+import { StyledAutocomplete , StyleLTRTypography} from './Style';
+import { StyledPopper } from 'Assets/Elements/AutoComplete/Popper/Style';
+import PopperProps from '@material-ui/core/Popper';
 
 const CustomizedSelectCheckList = ({
   labelInputText,
@@ -37,6 +39,10 @@ const CustomizedSelectCheckList = ({
   selectedList,
   sortByTranslation,
   onDeleteChip,
+  popperWidth,
+  popperLanguageDirection,
+  notRequired,
+  inputWidth
 }) => {
   const { t } = useTranslation();
 
@@ -97,9 +103,9 @@ const CustomizedSelectCheckList = ({
     }
     return matchSorter(options, inputValue, {
       keys: [
-        (item) => t(item.reasonCode.name),
+        (item) => sortByTranslation ? t(item.reasonCode.name) : item.reasonCode.name,
         'reasonCode.code',
-        (item) => t(item.serviceType.name),
+        (item) =>  sortByTranslation ?  t(item.serviceType.name) : item.serviceType.name,
       ],
     });
   };
@@ -113,6 +119,27 @@ const CustomizedSelectCheckList = ({
     onCloseChangeHandler(filteredSelectedServicesType);
     setSelectedServicesType(filteredSelectedServicesType);
   };
+
+  const popperWidthFixer = function (props) {
+    return (
+      <StyledPopper
+    direction={popperLanguageDirection ? popperLanguageDirection : 'inherit' }
+    {...props}
+    modifiers={{
+      setWidth: {
+        enabled: true,
+          order: 840,
+          fn(data) {
+          data.offsets.popper.width = data.styles.width = popperWidth ? popperWidth+'px' : '700px';
+          return data;
+        },
+      },
+    }}
+    placement='bottom-start'
+      />
+  );
+  };
+
 
   //this function for change dropdown list style
   const defaultRenderOption = (option, state) => {
@@ -141,7 +168,7 @@ const CustomizedSelectCheckList = ({
           )}
           {option.reasonCode && option.reasonCode.name && (
             <Grid item xs={3}>
-              <Typography noWrap>{option.reasonCode.name}</Typography>
+              <Typography  noWrap>{option.reasonCode.name}</Typography>
               {/* <ListItemText primary={t(option.reasonCode.name)} /> */}
             </Grid>
           )}
@@ -174,6 +201,7 @@ const CustomizedSelectCheckList = ({
         getOptionSelected={(option, value) =>
           option.reasonCode.code === value.reasonCode.code
         }
+        PopperComponent={popperWidth ? popperWidthFixer : PopperProps}
         disableCloseOnSelect
         renderTags={() => null}
         renderOption={(option, state) =>
@@ -194,7 +222,7 @@ const CustomizedSelectCheckList = ({
         options={selectCheckList}
         renderInput={(params) => (
           <CustomizedTextField
-            width={'70%'}
+            width={inputWidth ? inputWidth : '70%'}
             name='selectTest'
             inputRef={(e) => {
               selectTestRef.current = e;
@@ -206,7 +234,7 @@ const CustomizedSelectCheckList = ({
               requiredErrors[valueSetCode] || ''
             }
             {...params}
-            label={`${t(labelInputText)} *`}
+            label={`${t(labelInputText)} ${notRequired ? '' : '*'}`}
             InputProps={{
               ...params.InputProps,
               endAdornment: (

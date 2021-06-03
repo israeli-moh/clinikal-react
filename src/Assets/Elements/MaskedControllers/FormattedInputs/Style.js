@@ -1,6 +1,7 @@
 import styled from 'styled-components';
-import InputMask from 'react-input-mask';
-export const StyledMaskedInput = styled(InputMask)`
+import NumberFormat from 'react-number-format';
+
+export const StyledMaskedInput = styled(NumberFormat)`
   text-align: center;
   input {
     text-align: center;

@@ -46,6 +46,23 @@ const QuestionnaireResponseStats = {
               }
             });
             break;
+          case 'author' :
+            patchArr.push({
+              op: 'replace',
+              path: `/author`,
+              value: {
+                reference:
+                    'Practitioner/' + element,
+              }
+            });
+            break;
+          case 'authored' :
+            patchArr.push({
+              op: 'replace',
+              path: `/authored`,
+              value: element,
+            });
+            break;
 
           default:
             break;

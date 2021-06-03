@@ -1,19 +1,18 @@
 import React from 'react';
 import StyledBG, { BGImage, CenteredText } from './Style';
 import Typography from '@material-ui/core/Typography';
-const LoginBG = ({ src }) => {
+const LoginBG = ({ src, translation }) => {
   return (
-    <StyledBG>
-      <BGImage src={src} alt='backgroundImage' />
+    <StyledBG url={src}>
       <CenteredText>
         <Typography variant={'h1'} align={'center'}>
-          ברוכים השבים
+          {translation['welcome_back']}
         </Typography>
         <Typography variant={'h2'} align={'center'}>
-          קליניקל
+          {translation['clinikal']}
         </Typography>
         <Typography variant={'h3'} align={'center'}>
-          ניהול אדמיניסטרטיבי וקליני במוצר אחד
+          {translation['administrative_and_clinical_management_in_one_product']}
         </Typography>
       </CenteredText>
     </StyledBG>

@@ -19,6 +19,7 @@ export const StyledDivider = styled(Divider)`
 `;
 
 export const StyledAutoComplete = styled(Autocomplete)`
+   //how to disabled the browser autocomplete and autofill - https://github.com/mui-org/material-ui/blob/85cc6e5824108a8a1513ae17f5f0bc0b15d1f1bf/docs/src/pages/components/autocomplete/autocomplete.md#autocompleteautofill
   .MuiFormControl-root .MuiInputBase-root {
     padding-right: 0;
   }

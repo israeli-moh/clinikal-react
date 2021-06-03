@@ -17,7 +17,7 @@ import CustomizedDatePicker from 'Assets/Elements/CustomizedDatePicker';
 import {
   getCellPhoneRegexPattern,
   getEmailRegexPattern,
-  getOnlyLettersRegexPattern,
+  getPatientNamePattern
 } from 'Utils/Helpers/validation/patterns';
 import { normalizeValueData } from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeValueData';
 import { emptyArrayAll } from 'Utils/Helpers/emptyArray';
@@ -44,6 +44,7 @@ const PopupCreateNewPatient = ({
   facility,
   authorizationACO,
   hideAppointment,
+  listsBox
 }) => {
 
 
@@ -173,7 +174,7 @@ const PopupCreateNewPatient = ({
       ) {
         setError('identifier', 'notValid', 'The number entered is incorrect');
         setErrorIdNumber(true);
-        setErrorIdNumberText(t(errors?.identifier?.message));
+        setErrorIdNumberText(t('The number entered is incorrect'));
         setFormButtonSave('write');
       } else {
         (() => {
@@ -226,15 +227,9 @@ const PopupCreateNewPatient = ({
     //Load id types list
     (() => {
       try {
-        FHIR('ValueSet', 'doWork', {
-          functionName: 'getValueSet',
-          functionParams: { id: 'identifier_type_list' },
-        }).then((type_list) => {
           const {
-            data: {
               expansion: { contains },
-            },
-          } = type_list;
+          } = listsBox.identifier_type_list;
           let options = emptyArrayAll(t('Choose'));
           for (let status of contains) {
             options.push(normalizeFhirValueSet(status));
@@ -246,7 +241,6 @@ const PopupCreateNewPatient = ({
           if (selectedIdType.code !== 0) {
             setValue('identifierType', selectedIdType.code);
           }
-        });
       } catch (e) {
         console.log(e);
       }
@@ -255,23 +249,19 @@ const PopupCreateNewPatient = ({
     //Load KupatHolim list
     (() => {
       try {
-        FHIR('Organization', 'doWork', {
-          functionName: 'getOrganizationTypeKupatHolim',
-          //'functionParams': {id: 'gender'}
-        }).then((kupatHolim_list) => {
-          const {
-            data: { entry },
-          } = kupatHolim_list;
-          let array = emptyArrayAll(t('Choose'));
-          for (let row of entry) {
-            if (row.resource !== undefined) {
-              row.resource.name = t(row.resource.name);
-              let setLabelKupatHolim = normalizeValueData(row.resource);
-              array.push(setLabelKupatHolim);
-            }
+        const {
+          entry
+        } = listsBox.hmoList;
+        let array = emptyArrayAll(t('Choose'));
+        for (let row of entry) {
+          if (row.resource !== undefined) {
+            row.resource.name = t(row.resource.name);
+            let setLabelKupatHolim = normalizeValueData(row.resource);
+            array.push(setLabelKupatHolim);
           }
-          setKupatHolimList(array);
-        });
+        }
+        setKupatHolimList(array);
+
       } catch (e) {
         console.log(e);
       }
@@ -280,21 +270,14 @@ const PopupCreateNewPatient = ({
     //Load gender list
     (() => {
       try {
-        FHIR('ValueSet', 'doWork', {
-          functionName: 'getValueSet',
-          functionParams: { id: 'gender' },
-        }).then((gender_list) => {
           const {
-            data: {
               expansion: { contains },
-            },
-          } = gender_list;
+          } = listsBox.gender;
           let options = emptyArrayAll(t('Choose'));
           for (let status of contains) {
             options.push(normalizeFhirValueSet(status));
           }
           setGenderList(options);
-        });
       } catch (e) {
         console.log(e);
       }
@@ -393,7 +376,7 @@ const PopupCreateNewPatient = ({
                   'The number entered is incorrect',
                 );
                 setErrorIdNumber(true);
-                setErrorIdNumberText(t(errors?.identifier?.message));
+                setErrorIdNumberText(t('The number entered is incorrect'));
                 setFormButtonSave('write');
               } else {
                 clearForm();
@@ -741,8 +724,12 @@ const PopupCreateNewPatient = ({
                   rules={{
                     validate: (value) => {
                       const formValues = getValues('identifierType');
+                      console.log(formValues)
                       if (formValues && formValues.identifier !== undefined) {
                         setPatientIdNumber(formValues.identifier.trim());
+                      }
+                      if (formValues.identifierType === patientIdTypeMain && !validateLuhnAlgorithm(value)) {
+                        return true;
                       }
                       return getIsFound() === true;
                     },
@@ -750,7 +737,7 @@ const PopupCreateNewPatient = ({
                   color={'primary'}
                   variant={'filled'}
                   error={
-                    errorIdNumber || (!errorRequired.identifier ? false : true)
+                    errorIdNumber || (errorRequired.identifier)
                   }
                   helperText={errorIdNumberText || errorRequired.identifier}
                   title={''}
@@ -778,7 +765,7 @@ const PopupCreateNewPatient = ({
                   onInput={handlerOnInvalidField}
                   rules={{
                     validate: (value) => {
-                      return getOnlyLettersRegexPattern().test(value) ? false : true;
+                      return !getPatientNamePattern().test(value);
                     }
                   }}
                   error={
@@ -883,9 +870,7 @@ const PopupCreateNewPatient = ({
                   error={
                     errors.managingOrganization
                       ? true
-                      : !errorRequired.managingOrganization
-                      ? false
-                      : true
+                      : errorRequired.managingOrganization
                   }
                   helperText={
                     errors.managingOrganization
@@ -969,7 +954,7 @@ const PopupCreateNewPatient = ({
                   onInput={handlerOnInvalidField}
                   rules={{
                     validate: (value) => {
-                      return getOnlyLettersRegexPattern().test(value) ? false : true;
+                      return getPatientNamePattern().test(value) ? false : true;
                     }
                   }}
                   error={
@@ -1153,6 +1138,7 @@ const mapStateToProps = (state) => {
     formatDate: state.settings.format_date,
     facility: state.settings.facility,
     hideAppointment: state.settings.clinikal.clinikal_hide_appoitments,
+    listsBox: state.listsBox
   };
 };
 

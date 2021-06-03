@@ -12,9 +12,10 @@ import { useIdleTimer } from "react-idle-timer";
 import PopUpSessionTimeout from "Assets/Elements/PopUpSessionTimeout"
 import { restoreTokenAction } from 'Store/Actions/LoginActions/LoginActions';
 import * as moment from "moment";
+import { getToken } from 'Utils/Helpers/getToken';
 // import PrivateRoute from 'Components/PrivateRoute/PrivateRoute';
 
-const InitApp = ({ lang_id, lang_code, languageDirection, tokenExpired, restoreTokenAction}) => {
+const InitApp = ({ lang_id, lang_code, languageDirection, restoreTokenAction}) => {
 
   const [popupTimeoutIsOpen, setPopupTimeoutIsOpen] = useState(false);
   const MINUTES_BEFORE_EXPIRED = 10;
@@ -22,13 +23,14 @@ const InitApp = ({ lang_id, lang_code, languageDirection, tokenExpired, restoreT
 
   useEffect(() => {
     let interval =  setInterval(() => {
+        let tokenExpired = getToken('tokenExpired');
         let isInTheLastMinutes = tokenExpired - moment().unix() < MINUTES_BEFORE_EXPIRED * 60
         if (!isIdle() && isInTheLastMinutes) {
           restoreTokenAction();
         }
     },  1000 * 60 * 5) //refresh token interval - check every 5 minutes
     return () => clearInterval(interval)
-  }, [tokenExpired])
+  }, [])
 
   const handleOnIdle = event => {
     setPopupTimeoutIsOpen(true);
@@ -73,8 +75,7 @@ const mapStateToProps = (state) => {
   return {
     lang_id: state.settings.lang_id,
     languageDirection: state.settings.lang_dir,
-    lang_code: state.settings.lang_code,
-    tokenExpired: state.login.expired,
+    lang_code: state.settings.lang_code
   };
 };
 export default connect(mapStateToProps, { restoreTokenAction })(InitApp);

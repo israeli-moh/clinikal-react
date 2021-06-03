@@ -49,7 +49,7 @@ export const StyledEncountersTicketsOther = styled(Paper)`
 
 export const StyledCurrentExaminationHeader = styled.div`
   display: flex;
-  margin: 20px 23px;
+  margin: 20px 9px;
   width: 95%;
 
   div {
@@ -64,7 +64,9 @@ export const StyledCurrentExaminationHeader = styled.div`
     -moz-letter-spacing: normal;
     -ms-letter-spacing: normal;
     letter-spacing: normal;
-    text-align: right;
+    padding-left: ${(props) => (props.dir === 'ltr' ? '0' : '4px')};
+    padding-right: ${(props) => (props.dir === 'ltr' ? '4px' : '0')};
+    text-align: ${(props) => (props.dir === 'ltr' ? 'left' : 'right')};
     color: #000b40;
   }
   span {
@@ -78,7 +80,7 @@ export const StyledCurrentExaminationHeader = styled.div`
     -moz-letter-spacing: normal;
     -ms-letter-spacing: normal;
     letter-spacing: normal;
-    text-align: right;
+    text-align: ${(props) => (props.dir === 'ltr' ? 'left' : 'right')};
     color: #000b40;
     margin-left: 10%;
     /*white-space: nowrap;
@@ -93,17 +95,23 @@ export const StyledIconContainer = styled.div`
 `;
 export const StyledCameraIcon = styled.div`
   cursor: ${(props) => (props.canClickEncounter ? 'pointer' : 'not-allowed')};
-
+  width: 50%;
   img {
     width: 16px;
     height: 16px;
     object-fit: contain;
-    margin: -3px 9px;
+    margin: -3px 5px;
+    @media (max-width: 1400px) {
+      margin: -3px 4px;
+    }
   }
   span {
     width: 34px;
     height: 18px;
-    font-size: 16px;
+    font-size: ${(props) => (props.lang === 'en' ? '13px' : '16px')};
+    @media (max-width: 1400px) {
+      font-size: ${(props) => (props.lang === 'en' ? '11px' : '14px')};
+    }
     font-weight: normal;
     font-stretch: normal;
     font-style: normal;
@@ -121,12 +129,18 @@ export const StyledMedicalFileIcon = styled.div`
     width: 12px;
     height: 14px;
     object-fit: contain;
-    margin: -1px 9px;
+    margin: -1px 5px;
+    @media (max-width: 1400px) {
+      margin: -1px 4px;
+    }
   }
   span {
     width: 71px;
     height: 18px;
-    font-size: 16px;
+    font-size: ${(props) => (props.lang === 'en' ? '13px' : '16px')};;
+    @media (max-width: 1400px) {
+      font-size: ${(props) => (props.lang === 'en' ? '11px' : '14px')};
+    }
     font-weight: normal;
     font-stretch: normal;
     font-style: normal;
@@ -212,3 +226,4 @@ export const StyledAllButton = styled(Button)`
 export const StyledListItem = styled(ListItem)`
   margin: -16px 0px;
 `;
+

@@ -14,7 +14,7 @@ import { decodeBase_64IntoBlob } from 'Utils/Helpers/decodeBase_64IntoBlob';
 import { combineBase_64 } from 'Utils/Helpers/combineBase_64';
 import normalizeFhirDocumentReference from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirDocumentReference';
 import CustomizedPopup from 'Assets/Elements/CustomizedPopup';
-const Documents = ({ eid, pid, handleLoading, writePermission }) => {
+const Documents = ({ eid, pid, handleLoading, writePermission, initValueFunction }) => {
   const { t } = useTranslation();
   const { setValue, register, unregister, isCommitmentForm } = useFormContext();
 
@@ -243,7 +243,7 @@ const Documents = ({ eid, pid, handleLoading, writePermission }) => {
               id: normalizedFhirDocumentReference.id
             };
             if (normalizedFhirDocumentReference.url.startsWith('Referral')) {
-              setValue('Referral', objForForm);
+              initValueFunction([{'Referral': objForForm}]);
               setReferralBlob(blob);
               setReferralFile_64(base_64);
               setReferralFile(obj);
@@ -252,13 +252,13 @@ const Documents = ({ eid, pid, handleLoading, writePermission }) => {
               normalizedFhirDocumentReference.url.startsWith('Commitment') &&
               isCommitmentForm === '1'
             ) {
-              setValue('Commitment', objForForm);
+              initValueFunction([{'Commitment': objForForm}]);
               setCommitmentBlob(blob);
               commitmentRef.current = base_64;
               setCommitmentFile_64(base_64);
               setCommitmentFile(obj);
             } else {
-              setValue('additionalDocumentFile_64', objForForm);
+              initValueFunction([{'additionalDocumentFile_64': objForForm}]);
               setAdditionalDocumentBlob(blob);
               additionalDocumentRef.current = base_64;
               setAdditionalDocumentFile_64(base_64);

@@ -53,11 +53,6 @@ const loginReducer = (state = INITIAL_STATE, action) => {
         ...state,
         STATUS: action.type,
       };
-    case LOGIN_EXPIRED:
-      return {
-        ...state,
-        expired:moment().add(action.seconds, 'seconds').unix()
-      }
     default:
       return state;
   }

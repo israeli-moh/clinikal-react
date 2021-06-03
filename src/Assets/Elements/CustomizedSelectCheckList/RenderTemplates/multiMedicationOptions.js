@@ -8,7 +8,7 @@ export const multiMedicationsOptions = (option, state) => {
   return (
     <React.Fragment>
       <Grid container justify='flex-start' alignItems='center'>
-        <Grid item xs={2}>
+        <Grid item xs={1}>
           <Checkbox
             color='primary'
             icon={<CheckBoxOutlineBlankOutlined/>}
@@ -16,14 +16,14 @@ export const multiMedicationsOptions = (option, state) => {
             checked={state.selected}
           />
         </Grid>
-        {option.reasonCode && option.reasonCode.code && (
+        {/*option.reasonCode && option.reasonCode.code && (
           <Grid item xs={2}>
             <Typography noWrap>{option.reasonCode.code}</Typography>
-            {/* <ListItemText>{option.reasonCode.code}</ListItemText> */}
+            {/!* <ListItemText>{option.reasonCode.code}</ListItemText> *!/}
           </Grid>
-        )}
+        )*/}
         {option.reasonCode && option.reasonCode.name && (
-          <Grid item xs={8}>
+          <Grid item xs={11}>
             <Tooltip title={option.reasonCode.name} aria-label={option.reasonCode.name}>
               <StyleLTRTypography noWrap>{option.reasonCode.name}</StyleLTRTypography>
             </Tooltip>

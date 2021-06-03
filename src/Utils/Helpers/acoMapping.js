@@ -23,7 +23,8 @@ const getUIACOMapping = {
   waiting_for_release: 'PatientTrackingWaitingForRelease',
   finished_visit: 'PatientTrackingFinishedVisit',
   diagnosis_and_recommendations_form: 'DiagnosisandRecommendationsForm',
-  medical_admission_form: 'MedicalAdmissionForm'
+  medical_admission_form: 'MedicalAdmissionForm',
+  add_new_treatment_instruction: 'AddNewTreatmentInstruction'
 };
 
 export default getUIACOMapping;

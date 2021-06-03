@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyledFormGroup, StyledDivider } from '../Style';
+import { StyledFormGroup, StyledDivider, StyledAutoComplete } from '../Style';
 import Title from 'Assets/Elements/Title';
-import { Tabs, Tab, Grid } from '@material-ui/core';
+import { Tabs, Tab, Grid, InputAdornment, CircularProgress } from '@material-ui/core';
 import TabPanel from '../TabPanel';
 import CustomizedTextField from 'Assets/Elements/CustomizedTextField';
 import StyledToggleButtonGroup from 'Assets/Elements/StyledToggleButtonGroup';
@@ -17,8 +17,18 @@ import moment from 'moment';
 import { normalizeFhirOrganization } from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirOrganization';
 import { FHIR } from 'Utils/Services/FHIR';
 import normalizeFhirQuestionnaireResponse from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirQuestionnaireResponse';
+import {
+  ParseQuestionnaireResponseInt,
+  ParseQuestionnaireResponseText
+} from 'Utils/Helpers/FhirEntities/helpers/ParseQuestionnaireResponseItem';
+import { connect } from 'react-redux';
+import { ExpandLess, ExpandMore } from '@material-ui/icons';
+import { emptyArrayAll } from 'Utils/Helpers/emptyArray';
+import normalizeFhirValueSet from 'Utils/Helpers/FhirEntities/normalizeFhirEntity/normalizeFhirValueSet';
+import MenuItem from '@material-ui/core/MenuItem';
 
-const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, writePermission }) => {
+
+const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, writePermission, initValueFunction, noPaymentReasonsValueset }) => {
   const { t } = useTranslation();
 
   const {
@@ -27,12 +37,28 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
     setValue,
     requiredErrors,
     errors,
-    reset,
     unregister,
     isCommitmentForm,
-    getValues,
+
   } = useFormContext();
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [noPaymentReason, setNoPaymentReason] = useState(0);
+  const [noPaymentComment, setNoPaymentComment] = useState('');
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [noPaymentReasonsList, setNoPaymentReasonsList] = useState([]);
+  const defaultPaymentTab = 'Private';
+  useEffect(() => {
+    const {
+      expansion: { contains },
+    } = noPaymentReasonsValueset;
+    let options = emptyArrayAll(t('Choose'));
+    for (let status of contains) {
+      options.push(normalizeFhirValueSet(status));
+    }
+    console.log(options)
+    setNoPaymentReasonsList(options);
+  }, [])
+
   const paymentMethodHandler = (event, method) => {
     setValue('paymentMethod', method);
     setPaymentMethod(method);
@@ -44,6 +70,10 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
 
   const setCommitmentAndPaymentTabValueChangeHandler = (event, newValue) => {
     setCommitmentAndPaymentTabValue(newValue);
+    setValue([
+      { paymentTab: newValue }
+    ]);
+
   };
 
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -110,11 +140,18 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
 
   useEffect(() => {
     register({ name: 'questionnaireId' });
+    register({ name: 'questionnaire' });
     register({ name: 'questionnaireResponse' });
     if (isCommitmentForm !== '1') {
       register({ name: 'paymentMethod' });
       register({ name: 'paymentAmount' });
+      register({ name: 'receiptNumber' });
     }
+    register({ name: 'paymentTab' });
+    setValue({ paymentTab: commitmentAndPaymentTabValue })
+    register({ name: 'exemptionReason' });
+    register({ name: 'noPaymentComment' });
+
     (async () => {
       try {
         const questionnaire = await FHIR('Questionnaire', 'doWork', {
@@ -123,6 +160,7 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
         });
         if (questionnaire.data.total) {
           setValue('questionnaireId', questionnaire.data.entry[1].resource.id);
+          setValue('questionnaire', questionnaire.data.entry[1].resource);
           const questionnaireResponseData = await FHIR(
             'QuestionnaireResponse',
             'doWork',
@@ -144,105 +182,96 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
                 'questionnaireResponse',
                 normalizedQuestionnaireResponse.id || '',
               );
-              if (isCommitmentForm === '1') {
-                const commitmentDate = normalizedQuestionnaireResponse.items.find(
-                  (item) => item.text === 'Commitment date',
+
+              const commitmentDate = normalizedQuestionnaireResponse.items.find(
+                (item) => item.text === 'Commitment date',
+              );
+              const commitmentValidity = normalizedQuestionnaireResponse.items.find(
+                (item) => item.text === 'Commitment expiration date',
+              );
+              if (commitmentDate && typeof commitmentDate.answer !== 'undefined') {
+                setCommitmentAndPaymentCommitmentDate(
+                  moment(commitmentDate.answer[0].valueDate),
                 );
-                const commitmentValidity = normalizedQuestionnaireResponse.items.find(
-                  (item) => item.text === 'Commitment expiration date',
-                );
-                if (commitmentDate) {
-                  setCommitmentAndPaymentCommitmentDate(
-                    moment(commitmentDate.answer[0].valueDate),
-                  );
-                }
-                if (commitmentValidity) {
-                  setCommitmentAndPaymentCommitmentValidity(
-                    moment(commitmentValidity.answer[0].valueDate),
-                  );
-                }
-                const commitmentAndPaymentReferenceForPaymentCommitment =
-                  normalizedQuestionnaireResponse.items.find(
-                    (item) => item.linkId === '1',
-                  ).answer[0].valueInteger || '';
-                const commitmentAndPaymentDoctorsName =
-                  normalizedQuestionnaireResponse.items.find(
-                    (item) => item.linkId === '4',
-                  ).answer[0].valueString || '';
-                const commitmentAndPaymentDoctorsLicense =
-                  normalizedQuestionnaireResponse.items.find(
-                    (item) => item.linkId === '5',
-                  ).answer[0].valueInteger || '';
-                setValue([
-                  {
-                    commitmentAndPaymentReferenceForPaymentCommitment:
-                      commitmentAndPaymentReferenceForPaymentCommitment || '',
-                  },
-                  {
-                    commitmentAndPaymentDoctorsName:
-                      commitmentAndPaymentDoctorsName || '',
-                  },
-                  {
-                    commitmentAndPaymentDoctorsLicense:
-                      commitmentAndPaymentDoctorsLicense || '',
-                  },
-                ]);
-                // reset({
-                //   ...getValues(),
-                //   commitmentAndPaymentReferenceForPaymentCommitment:
-                //     normalizedQuestionnaireResponse.items.find(
-                //       (item) => item.linkId === '1',
-                //     ).answer[0].valueInteger || '',
-                //   commitmentAndPaymentDoctorsName:
-                //     normalizedQuestionnaireResponse.items.find(
-                //       (item) => item.linkId === '4',
-                //     ).answer[0].valueString || '',
-                //   commitmentAndPaymentDoctorsLicense:
-                //     normalizedQuestionnaireResponse.items.find(
-                //       (item) => item.linkId === '5',
-                //     ).answer[0].valueInteger || '',
-                // });
-              } else {
-                const paymentAmount = normalizedQuestionnaireResponse.items.find(
-                  (item) => item.linkId === '6',
-                ).answer[0].valueString;
-                const paymentMethod = normalizedQuestionnaireResponse.items.find(
-                  (item) => item.linkId === '7',
-                ).answer[0].valueString;
-                const receiptNumber = normalizedQuestionnaireResponse.items.find(
-                  (item) => item.linkId === '8',
-                ).answer[0].valueString;
-                setValue([
-                  {
-                    paymentAmount: paymentAmount || 0,
-                  },
-                  {
-                    paymentMethod: paymentMethod || '',
-                  },
-                  // {
-                  //   questionnaireId: questionnaire.data.entry[1].resource.id,
-                  // },
-                  {
-                    questionnaireResponse:
-                      normalizedQuestionnaireResponse.id || '',
-                  },
-                  {
-                    receiptNumber: receiptNumber || '',
-                  },
-                ]);
-                if (paymentMethod) {
-                  setPaymentMethod(paymentMethod);
-                }
-                if (paymentAmount) {
-                  setPaymentAmount(paymentAmount);
-                }
-                // if (receiptNumber)
-                //   reset({
-                //     ...getValues(),
-                //     receiptNumber: receiptNumber,
-                //   });
               }
+              if (commitmentValidity && typeof commitmentValidity.answer !== 'undefined') {
+                setCommitmentAndPaymentCommitmentValidity(
+                  moment(commitmentValidity.answer[0].valueDate),
+                );
+              }
+              const commitmentAndPaymentReferenceForPaymentCommitment = ParseQuestionnaireResponseInt(normalizedQuestionnaireResponse, 1)|| '';
+              const commitmentAndPaymentDoctorsName = ParseQuestionnaireResponseText(normalizedQuestionnaireResponse, '4') || '';
+              const commitmentAndPaymentDoctorsLicense = ParseQuestionnaireResponseInt(normalizedQuestionnaireResponse, 5)|| '';
+              /*initValueFunction([
+                {
+                  commitmentAndPaymentReferenceForPaymentCommitment:
+                    commitmentAndPaymentReferenceForPaymentCommitment || '',
+                },
+                {
+                  commitmentAndPaymentDoctorsName:
+                    commitmentAndPaymentDoctorsName || '',
+                },
+                {
+                  commitmentAndPaymentDoctorsLicense:
+                    commitmentAndPaymentDoctorsLicense || '',
+                },
+              ]);*/
+
+              const paymentAmount = ParseQuestionnaireResponseText(normalizedQuestionnaireResponse, '6');
+              const paymentMethod = ParseQuestionnaireResponseText(normalizedQuestionnaireResponse, '7');
+              const receiptNumberResult = ParseQuestionnaireResponseText(normalizedQuestionnaireResponse, '8');
+              initValueFunction([
+                {
+                  paymentAmount: paymentAmount || '',
+                },
+                {
+                  paymentMethod: paymentMethod || '',
+                },
+                {
+                  questionnaireResponse:
+                    normalizedQuestionnaireResponse.id || '',
+                },
+                {
+                  receiptNumber: receiptNumberResult || '',
+                },
+              ]);
+              if (paymentMethod) {
+                setPaymentMethod(paymentMethod);
+              }
+              if (paymentAmount) {
+                setPaymentAmount(paymentAmount);
+              }
+              if (receiptNumberResult) {
+                setReceiptNumber(receiptNumberResult)
+              }
+
+              const exemptionReason = ParseQuestionnaireResponseText(normalizedQuestionnaireResponse, '9');
+              const noPaymentCommentResult = ParseQuestionnaireResponseText(normalizedQuestionnaireResponse, '10');
+
+              initValueFunction([
+                {
+                  exemptionReason: exemptionReason || '',
+                },
+                {
+                  noPaymentComment: noPaymentCommentResult || '',
+                }
+              ])
+              if (exemptionReason) {
+                setNoPaymentReason(exemptionReason);
+              }
+              if (noPaymentCommentResult) {
+                setNoPaymentComment(noPaymentCommentResult)
+              }
+
+              /* active tab */
+              let activeTab = getActiceTab(commitmentAndPaymentReferenceForPaymentCommitment, paymentAmount, exemptionReason || noPaymentCommentResult)
+              setCommitmentAndPaymentTabValue(activeTab);
+              initValueFunction([
+                { paymentTab: activeTab }
+              ])
             }
+
+
             handleLoading('payment');
           } else {
             handleLoading('payment');
@@ -251,7 +280,7 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
           handleLoading('payment');
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
         handleLoading('payment');
       }
     })();
@@ -262,6 +291,30 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
       unregister(['questionnaireId', 'questionnaireResponse']);
     };
   }, [setValue, pid, eid, isCommitmentForm, register, unregister]);
+
+  const getActiceTab = (HMOtab, paymentTab, noPaymentTab) => {
+      if (HMOtab !== undefined && HMOtab.length > 0 ) return 'HMO';
+      if (paymentTab !== undefined && paymentTab.length > 0 ) return 'Private';
+      if (noPaymentTab!== undefined && noPaymentTab.length > 0 ) return 'noPayment';
+      return defaultPaymentTab;
+  }
+
+  const changeNoPayment = (event) => {
+    console.log(event.target.value)
+    setNoPaymentReason(event.target.value)
+    setValue('exemptionReason', event.target.value)
+  }
+
+  const changeNoPaymentComment  = (event) => {
+    setNoPaymentComment(event.target.value)
+    setValue('noPaymentComment', event.target.value)
+  }
+
+  const changeReceiptNumber = (event) => {
+    setReceiptNumber(event.target.value);
+    setValue('receiptNumber', event.target.value)
+  }
+
   return (
     <StyledFormGroup>
       <Title
@@ -293,6 +346,7 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
         ) : (
           <Tab label={t('Private')} value={'Private'} />
         )}
+        <Tab label={t('No payment')} value={'noPayment'} />
         {/* <Tab label={t('insurance company')} /> */}
       </Tabs>
       <TabPanel value='Private' selectedValue={commitmentAndPaymentTabValue}>
@@ -304,6 +358,9 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
           disabled={!writePermission}
           value={paymentAmount}
           label={t('Payment amount')}
+          InputProps={{
+            autoComplete: 'off',
+          }}
         />
         <Grid
           container
@@ -329,9 +386,50 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
         <CustomizedTextField
           name='receiptNumber'
           width={'70%'}
-          inputRef={register}
+          value={receiptNumber}
+          onChange={changeReceiptNumber}
           label={t('Receipt number')}
-          InputLabelProps={{ shrink: true }}
+          InputLabelProps={{
+            shrink: true
+          }}
+          InputProps={{
+            autoComplete: 'off'
+          }}
+        />
+      </TabPanel>
+      <TabPanel value='noPayment' selectedValue={commitmentAndPaymentTabValue}>
+            <CustomizedTextField
+              select
+              value={noPaymentReason}
+              iconColor='#1976d2'
+              width='70%'
+              label={t('Exemption reason')}
+              onChange={changeNoPayment}
+              InputLabelProps={{
+                shrink: true
+              }}
+              inputProps={{
+                autoComplete: 'off'
+              }}
+              >
+              {noPaymentReasonsList.map((value, index) => (
+                  <MenuItem key={index} value={value.code}>
+                    {t(value.name)}
+                  </MenuItem>
+              ))}
+            </CustomizedTextField>
+        <CustomizedTextField
+          name='noPaymentComment'
+          width={'70%'}
+          value={noPaymentComment}
+          onChange={changeNoPaymentComment}
+          label={t('Comment')}
+          InputLabelProps={{
+            shrink: true
+          }}
+          inputProps={{
+            autoComplete: 'off'
+          }}
         />
       </TabPanel>
       <TabPanel value='HMO' selectedValue={commitmentAndPaymentTabValue}>
@@ -359,6 +457,9 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
           helperText={
             requiredErrors.commitmentAndPaymentReferenceForPaymentCommitment
           }
+          InputProps={{
+            autoComplete: 'off',
+          }}
         />
         <Controller
           name='commitmentAndPaymentCommitmentDate'
@@ -464,7 +565,12 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
           disabled={!writePermission}
           id={'commitmentAndPaymentDoctorsLicense'}
           type='number'
-          InputLabelProps={{ shrink: true }}
+          InputLabelProps={{
+            shrink: true
+          }}
+          InputProps={{
+            autoComplete: 'off'
+          }}
           error={
             requiredErrors.commitmentAndPaymentDoctorsLicense ? true : false
           }
@@ -475,4 +581,11 @@ const Payment = ({ pid, eid, formatDate, managingOrganization, handleLoading, wr
   );
 };
 
-export default Payment;
+
+const mapStateToProps = (state) => {
+  return {
+    noPaymentReasonsValueset: state.listsBox.no_payment_reasons,
+  };
+};
+
+export default connect(mapStateToProps)(Payment);

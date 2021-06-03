@@ -6,7 +6,8 @@ import { StyledFormGroup } from 'Assets/Elements/StyledFormGroup';
 import CustomizedTextField from 'Assets/Elements/CustomizedTextField';
 import { useFormContext, Controller } from 'react-hook-form';
 import { StyledDivider } from '../Style';
-const RecommendationsOnRelease = ({ initValueFunction }) => {
+import { connect } from 'react-redux';
+const RecommendationsOnRelease = ({ initValueFunction, languageDirection}) => {
   const { t } = useTranslation();
   const {
     register,
@@ -72,27 +73,32 @@ const RecommendationsOnRelease = ({ initValueFunction }) => {
       />
       <StyledDivider />
       <Grid container direction='row' justify='flex-start' alignItems='center'>
-        <label style={{ width: '66px' }}>{t('Decision')}</label>
+        <label style={{ width: '73px'}}>{t('Decision')}</label>
         <RadioGroup
+          style={{ marginRight: '0', marginLeft: '0' }}
           row
           name='decision'
           value={decision}
           onChange={handleDecisionChange}>
           <FormControlLabel
+            style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
             value='Evacuation to hospital'
             label={t('Evacuation to hospital')}
             control={
               <Radio
+                style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
                 color='primary'
                 disabled={permission === 'view' ? true : false}
               />
             }
           />
           <FormControlLabel
+            style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
             value='Release to home'
             label={t('Release to home')}
             control={
               <Radio
+                style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
                 color='primary'
                 disabled={permission === 'view' ? true : false}
               />
@@ -107,27 +113,31 @@ const RecommendationsOnRelease = ({ initValueFunction }) => {
         alignItems={decision === 'Release to home' ? 'baseline' : 'center'}>
         {decision === 'Evacuation to hospital' && (
           <React.Fragment>
-            <label>{t('Evacuation way')}</label>
+            <label style={languageDirection === 'ltr' ? {paddingRight: '10px'} : {paddingLeft: '10px'} } >{t('Evacuation way')}</label>
             <RadioGroup
               row
               name='evacuationWay'
               value={evacuationWay}
               onChange={handleEvacuationWayChange}>
               <FormControlLabel
+                style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
                 value='Ambulance'
                 label={t('Ambulance')}
                 control={
                   <Radio
+                    style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
                     color='primary'
                     disabled={permission === 'view' ? true : false}
                   />
                 }
               />
               <FormControlLabel
+                style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
                 value='Independent'
                 label={t('Independent')}
                 control={
                   <Radio
+                    style={languageDirection === 'ltr' ? {paddingRight: '0'} : null }
                     color='primary'
                     disabled={permission === 'view' ? true : false}
                   />
@@ -166,4 +176,11 @@ const RecommendationsOnRelease = ({ initValueFunction }) => {
   );
 };
 
-export default RecommendationsOnRelease;
+
+const mapStateToProps = (state) => {
+  return {
+    languageDirection: state.settings.lang_dir,
+  };
+};
+export default connect(mapStateToProps)(RecommendationsOnRelease);
+
